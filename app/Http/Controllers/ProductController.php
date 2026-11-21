@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\CacheService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 
 class ProductController extends Controller
 {
@@ -13,15 +14,16 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        // Hot path: catálogo con filtros + paginación. La clave cacheada
-        // codifica q + categoría + orden + página, así que cada combinación
-        // tiene su entrada en Redis. Invalida al mutar productos (bumpVersion
-        // 'catalog'). Si Redis cae, sirve desde BD.
+        // Hot path: catálogo con filtros + paginación. Cacheamos el HTML
+        // renderizado del parcial (NO el Paginator/Collection Eloquent) para
+        // evitar "incomplete object" al deserializar. La clave codifica
+        // q + categoría + orden + página → cada combinación su entrada.
+        // Invalida al mutar productos (bumpVersion 'catalog').
         $suffix = 'list:' . md5(serialize([
             $request->q, $request->category, $request->get('sort', 'newest'), $request->get('page', 1),
         ]));
 
-        $payload = $this->cache->rememberVersioned('catalog', $suffix, function () use ($request) {
+        $content = $this->cache->rememberVersioned('catalog', $suffix, function () use ($request) {
             $query = Product::active()->with('category');
 
             if ($request->filled('q')) {
@@ -38,13 +40,18 @@ class ProductController extends Controller
                 default      => $query->latest(),
             };
 
-            return [
+            return View::make('partials.products.index-content', [
                 'products'   => $query->paginate(12)->withQueryString(),
                 'categories' => Category::where('is_active', true)->orderBy('name')->get(),
-            ];
+            ])->render();
         });
 
-        return view('products.index', $payload);
+        $content = $this->cache->substituteCsrf($content);
+
+        return view('products.index', [
+            'title'   => 'Productos — MODA',
+            'content' => $content,
+        ]);
     }
 
     public function show(Product $product)
@@ -52,7 +59,8 @@ class ProductController extends Controller
         abort_unless($product->is_active, 404);
 
         // Detalle de producto: clave por id (estable aunque cambie el slug).
-        $data = $this->cache->rememberVersioned('catalog', "show:{$product->id}", function () use ($product) {
+        // HTML renderizado del parcial (no objetos).
+        $content = $this->cache->rememberVersioned('catalog', "show:{$product->id}", function () use ($product) {
             $product->load(['images', 'category']);
             $related = Product::active()
                 ->where('category_id', $product->category_id)
@@ -60,10 +68,18 @@ class ProductController extends Controller
                 ->take(4)
                 ->get();
 
-            return ['product' => $product, 'related' => $related];
+            return View::make('partials.products.show-content', [
+                'product' => $product,
+                'related' => $related,
+            ])->render();
         });
 
-        return view('products.show', $data);
+        $content = $this->cache->substituteCsrf($content);
+
+        return view('products.show', [
+            'title'   => ($product->name ?? 'Producto') . ' — MODA',
+            'content' => $content,
+        ]);
     }
 
     public function byCategory(Category $category, Request $request)
@@ -74,7 +90,7 @@ class ProductController extends Controller
             $request->get('sort', 'newest'), $request->get('page', 1),
         ]));
 
-        $payload = $this->cache->rememberVersioned('catalog', $suffix, function () use ($category, $request) {
+        $content = $this->cache->rememberVersioned('catalog', $suffix, function () use ($category, $request) {
             $query = Product::active()
                 ->where('category_id', $category->id)
                 ->with('category');
@@ -84,13 +100,18 @@ class ProductController extends Controller
                 default      => $query->latest(),
             };
 
-            return [
+            return View::make('partials.products.index-content', [
                 'products'   => $query->paginate(12)->withQueryString(),
                 'categories' => Category::where('is_active', true)->orderBy('name')->get(),
                 'category'   => $category,
-            ];
+            ])->render();
         });
 
-        return view('products.index', $payload);
+        $content = $this->cache->substituteCsrf($content);
+
+        return view('products.index', [
+            'title'   => $category->name . ' — MODA',
+            'content' => $content,
+        ]);
     }
 }

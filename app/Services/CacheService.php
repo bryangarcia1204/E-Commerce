@@ -60,6 +60,21 @@ class CacheService
     }
 
     /**
+     * Sustituye el placeholder __CSRF_TOKEN__ por el token real de la sesión.
+     *
+     * Los parciales cacheados como HTML (home, catálogo, detalle) contienen
+     * formularios add-to-cart con <input name="_token" value="__CSRF_TOKEN__">
+     * en lugar de @csrf, para que el blob cacheado NUNCA guarde un token de
+     * sesión (lo que provocaría 419 a otros usuarios). El controlador llama a
+     * este método tras leer la caché (tanto en hit como en miss) para inyectar
+     * el token correcto de la request actual.
+     */
+    public function substituteCsrf(string $html): string
+    {
+        return str_replace('__CSRF_TOKEN__', csrf_token(), $html);
+    }
+
+    /**
      * Recuerda un valor bajo una clave plana (sin versión). Útil para
      * claves por-usuario (p.ej. conteo del carrito) que se invalidan
      * individualmente con forget().
@@ -119,7 +134,13 @@ class CacheService
             // también en graceful y servirá desde BD.
         }
 
-        return "{$namespace}:v{$version}:" . preg_replace('/[^a-zA-Z0-9_.\-:]/', '', $suffix);
+        // Esquema 's2': los hot paths ahora cachean HTML renderizado (no
+        // objetos Eloquent). Al incluir :s2: en la clave, las entradas viejas
+        // (formato sin esquema, que guardaban Collections y provocaban
+        // "incomplete object" al deserializar) quedan huérfanas y expiran por
+        // TTL → migración self-healing sin necesidad de cache:clear manual.
+        // Subir este valor si vuelve a cambiar el formato del valor cacheado.
+        return "{$namespace}:v{$version}:s2:" . preg_replace('/[^a-zA-Z0-9_.\-:]/', '', $suffix);
     }
 
     private function store(): ?string

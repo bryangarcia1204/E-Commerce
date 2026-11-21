@@ -15,11 +15,15 @@ class DashboardController extends Controller
 
     public function index()
     {
-        // Agregados cacheados 60s en Redis (namespace 'dashboard'). El admin
-        // recarga a menudo; sin caché cada visita suma ~7 queries de
+        // Agregados escalares cacheados 60s en Redis (namespace 'dashboard').
+        // El admin recarga a menudo; sin caché cada visita suma ~7 queries de
         // SUM/COUNT. Invalida al crear pedidos o mutar liquidaciones. Si Redis
         // cae, CacheService sirve desde BD sin caché.
-        return view('admin.dashboard', $this->cache->rememberVersioned('dashboard', 'main', function () {
+        //
+        // IMPORTANTE: sólo se cachean escalares (int/float). recentOrders es
+        // una Collection Eloquent: serializarla provoca "incomplete object" al
+        // deserializar, así que se consulta fresca fuera de la caché.
+        $stats = $this->cache->rememberVersioned('dashboard', 'main', function () {
             // Agregados financieros del libro de liquidaciones (dropshipping).
             // El admin ve el flujo de caja pendiente SIN tocar secretos
             // individuales (tokens de pago, billeteras de usuarios, etc.).
@@ -41,7 +45,6 @@ class DashboardController extends Controller
                 // Ingresos: excluimos pedidos cancelados. Cast a float para que la
                 // vista no reciba un string desde SUM() y number_format() funcione.
                 'revenue'       => (float) Order::where('status', '!=', Order::STATUS_CANCELLED)->sum('total'),
-                'recentOrders'  => Order::with('items')->latest()->take(5)->get(),
                 // Finanzas dropshipping (agregado, sin secretos).
                 'pendingReceivable'   => $pendingReceivable,
                 'pendingCommission'   => $pendingCommission,
@@ -49,6 +52,12 @@ class DashboardController extends Controller
                 'realizedMargin'      => $realizedMargin,
                 'realizedCommission'  => $realizedCommission,
             ];
-        }));
+        });
+
+        // Pedidos recientes FUERA de la caché (Collection Eloquent, 1 query,
+        // 5 filas): serializar objetos en caché rompe al deserializar.
+        $stats['recentOrders'] = Order::with('items')->latest()->take(5)->get();
+
+        return view('admin.dashboard', $stats);
     }
 }

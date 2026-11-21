@@ -44,16 +44,20 @@ class PageController extends Controller
 
     /**
      * Página de novedades/tendencias completa (la home muestra un extracto).
-     * Cacheada en Redis (namespace 'news'); invalida el comando scrape:news.
+     * Cacheamos el HTML renderizado del parcial (NO el Paginator Eloquent,
+     * que provocaba "incomplete object" al deserializar). Invalida scrape:news.
+     * Sin formularios CSRF aquí → no hace falta substituteCsrf.
      */
     public function news(Request $request): View
     {
         $suffix = 'list:' . md5(serialize([(int) $request->get('page', 1)]));
 
-        $items = $this->cache->rememberVersioned('news', $suffix, function () {
-            return NewsItem::active()->latest('published_at')->paginate(12);
+        $content = $this->cache->rememberVersioned('news', $suffix, function () {
+            return \Illuminate\Support\Facades\View::make('partials.pages.novedades-content', [
+                'items' => NewsItem::active()->latest('published_at')->paginate(12),
+            ])->render();
         });
 
-        return view('pages.novedades', compact('items'));
+        return view('pages.novedades', ['content' => $content]);
     }
 }

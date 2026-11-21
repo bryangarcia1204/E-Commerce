@@ -29,7 +29,12 @@
             {{-- Quick add --}}
             <div class="absolute inset-x-2 bottom-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition">
                 <form method="POST" action="{{ route('cart.add', $product) }}">
-                    @csrf
+                    {{-- Placeholder de token CSRF: el HTML de esta tarjeta se
+                        cachea (home/catálogo/detalle). El controlador sustituye
+                        __CSRF_TOKEN__ por csrf_token() real en cada request,
+                        así el blob cacheado nunca contiene un token de sesión
+                        congelado (que causaría 419 a otros usuarios). --}}
+                    <input type="hidden" name="_token" value="__CSRF_TOKEN__">
                     <input type="hidden" name="quantity" value="1">
                     <button type="submit"
                         class="w-full bg-ink/95 backdrop-blur text-white text-xs font-semibold py-2.5 rounded-full hover:bg-brand transition">

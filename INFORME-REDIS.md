@@ -9,6 +9,47 @@ agregados del panel admin. Más rate limiting anti-flood respaldado por Redis.
 
 ---
 
+## ⚠️ Errata y fix — "incomplete object" al deserializar Collections
+
+La versión inicial de esta capa cacheaba **Colecciones/Modelos Eloquent**
+directamente (`Product::...->get()`, paginadores). Al deserializar el blob
+en un cache HIT, PHP devolvía un `__PHP_Incomplete_Class` de
+`Illuminate\Database\Eloquent\Collection` y la vista fallaba con:
+
+> The script tried to call a method on an incomplete object…
+> home.blade.php:29 — `$featured->firstWhere(...)`
+
+Causa de fondo: serializar objetos Eloquent en la caché es frágil (la clase
+no siempre está resuelta al `unserialize`, y `SerializesModels` descarta las
+relaciones eager-loaded → N+1 latente). Además, las tarjetas de producto y el
+formulario del detalle llevan `@csrf` (token de sesión); congelar ese token en
+HTML cacheado provocaba **419** a todos los demás usuarios.
+
+**Fix aplicado (cachear HTML de parciales, no objetos):**
+
+1. Cada hot path ahora renderiza su **parcial Blade a HTML** y cachea el
+   *string* resultante (`View::make('partials.…')->render()`). Los strings se
+   serializan/deserializan sin tocar el autoloader → cero "incomplete object".
+   El layout (cabecera, carrito, auth) queda dinámico fuera de la caché.
+   - `partials/home/content`, `partials/products/index-content`,
+     `partials/products/show-content`, `partials/pages/novedades-content`.
+2. **CSRF por placeholder**: las tarjetas y el formulario del detalle usan
+   `<input name="_token" value="__CSRF_TOKEN__">` en vez de `@csrf`. El
+   controlador sustituye el placeholder por `csrf_token()` real en cada
+   request (`CacheService::substituteCsrf`) → el blob cacheado nunca guarda
+   un token de sesión → sin 419.
+3. **Dashboard**: `recentOrders` (Collection) sale de la caché; se consulta
+   fresco (1 query, 5 filas). Sólo se cachean escalares (COUNT/SUM).
+4. **`cache:warm`** sólo pre-calienta la **home** (catálogo/novedades tienen
+   paginación cuyas URLs dependen la request HTTP real; pre-renderizarlos en
+   consola daría URLs `localhost` rotas — se calientan solos en la 1ª request).
+5. **Migración self-healing**: `CacheService::versionedKey` añade `:s2:` al
+   esquema de clave. Las entradas viejas (formato sin `:s2:`, con Collections)
+   quedan huérfanas y expiran por TTL → **no hace falta `cache:clear` manual**
+   tras desplegar el fix (aunque sigue siendo buena práctica ejecutarlo).
+
+---
+
 ## 1. Activación de Redis
 
 Laravel 13 ya trae la infraestructura Redis configurada por defecto

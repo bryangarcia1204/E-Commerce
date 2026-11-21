@@ -30,6 +30,33 @@
         </div>
     </div>
 
+    {{-- Productos de tiendas asociadas: el usuario completa la compra en la
+         tienda original vía nuestro enlace de afiliado. --}}
+    @php
+        $dropshippingItems = $order->items->filter(fn ($i) => $i->product && $i->product->is_dropshipping);
+    @endphp
+    @if($dropshippingItems->isNotEmpty())
+        <div class="max-w-md mx-auto mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-left">
+            <p class="font-bold text-amber-900 mb-1">🛍️ Completa tu compra en la tienda asociada</p>
+            <p class="text-xs text-amber-800 mb-4">Estos productos se compran directamente en la tienda original. Pulsa cada botón para finalizar la compra; la tienda se encarga del pago y del envío.</p>
+            <div class="space-y-3">
+                @foreach($dropshippingItems as $item)
+                    <div class="flex items-center justify-between gap-3 bg-white rounded-lg p-3">
+                        <div class="text-xs">
+                            <p class="font-semibold text-gray-900">{{ $item->quantity }}× {{ $item->product_name }}</p>
+                            <p class="text-gray-500 uppercase">{{ $item->product->external_store }} · {{ number_format((float) $item->total, 2, ',', '.') }} €</p>
+                        </div>
+                        <a href="{{ route('affiliate.redirect', $item->product) }}"
+                           target="_blank" rel="noopener noreferrer nofollow sponsored"
+                           class="inline-block bg-black text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-gray-800 whitespace-nowrap">
+                            Comprar en {{ ucfirst($item->product->external_store) }} →
+                        </a>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="flex flex-wrap items-center justify-center gap-4 mt-8">
         <a href="{{ route('orders.show', $order) }}"
            class="inline-block bg-black text-white px-6 py-3 rounded-full text-sm font-semibold hover:bg-gray-800">

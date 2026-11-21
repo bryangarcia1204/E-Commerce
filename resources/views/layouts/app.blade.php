@@ -142,11 +142,21 @@
         </div>
         <div>
             <h4 class="text-white font-bold mb-3">Ayuda</h4>
-            <ul class="space-y-2 text-xs"><li>Envíos</li><li>Devoluciones</li><li>Contacto</li></ul>
+            <ul class="space-y-2 text-xs">
+                <li><a href="{{ route('pages.envios') }}" class="hover:text-white">Envíos</a></li>
+                <li><a href="{{ route('pages.devoluciones') }}" class="hover:text-white">Devoluciones</a></li>
+                <li><a href="{{ route('pages.contacto') }}" class="hover:text-white">Contacto</a></li>
+                <li><a href="{{ route('pages.novedades') }}" class="hover:text-white">Novedades</a></li>
+            </ul>
         </div>
         <div>
-            <h4 class="text-white font-bold mb-3">Síguenos</h4>
-            <ul class="space-y-2 text-xs"><li>Instagram</li><li>TikTok</li><li>Pinterest</li></ul>
+            <h4 class="text-white font-bold mb-3">Legal</h4>
+            <ul class="space-y-2 text-xs">
+                <li><a href="{{ route('pages.privacidad') }}" class="hover:text-white">Privacidad (RGPD)</a></li>
+                <li><a href="{{ route('pages.terminos') }}" class="hover:text-white">Términos</a></li>
+                <li><a href="{{ route('pages.nosotros') }}" class="hover:text-white">Sobre nosotros</a></li>
+                <li><a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="hover:text-white">Instagram</a></li>
+            </ul>
         </div>
     </div>
     <div class="border-t border-white/10">

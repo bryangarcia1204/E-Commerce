@@ -49,6 +49,64 @@
     </div>
 </section>
 
+{{-- NOVEDADES / TENDENCIAS / PROMOCIONES --}}
+@if($newsFeed->isNotEmpty())
+<section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="flex items-end justify-between mb-6">
+        <div>
+            <h2 class="text-2xl md:text-3xl font-black">Novedades &amp; tendencias</h2>
+            <p class="text-sm text-gray-500 mt-1">Moda, promociones y lo que se lleva esta temporada</p>
+        </div>
+        <a href="{{ route('pages.novedades') }}" class="text-sm text-gray-500 hover:text-ink">Ver todo →</a>
+    </div>
+
+    @if($newsCarousel->isNotEmpty())
+    {{-- Carrusel destacado --}}
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        @foreach($newsCarousel as $item)
+            <a href="{{ $item->source_url ?: ($item->product_id ? route('products.show', $item->product_id) : route('pages.novedades')) }}"
+               target="_blank" rel="noopener noreferrer"
+               class="group relative rounded-2xl overflow-hidden aspect-[4/3] bg-gray-100">
+                <img src="{{ $item->cover_image ?: asset('img/placeholder.svg') }}"
+                     alt="{{ $item->title }}"
+                     class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                <div class="absolute bottom-0 p-4 text-white">
+                    <span class="inline-block text-[10px] uppercase tracking-wider bg-white/20 backdrop-blur px-2 py-0.5 rounded mb-2">{{ \App\Models\NewsItem::TYPES[$item->type] ?? 'Noticia' }}</span>
+                    <p class="font-bold text-sm leading-tight">{{ $item->title }}</p>
+                    @if($item->source_name)
+                        <p class="text-xs text-white/70 mt-1">{{ $item->source_name }}</p>
+                    @endif
+                </div>
+            </a>
+        @endforeach
+    </div>
+    @endif
+
+    {{-- Grid feed --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        @foreach($newsFeed as $item)
+            <a href="{{ $item->source_url ?: route('pages.novedades') }}"
+               target="_blank" rel="noopener noreferrer"
+               class="group block rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg transition">
+                <div class="aspect-video bg-gray-100 overflow-hidden">
+                    <img src="{{ $item->cover_image ?: asset('img/placeholder.svg') }}"
+                         alt="{{ $item->title }}"
+                         class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                </div>
+                <div class="p-3">
+                    <span class="text-[10px] uppercase tracking-wider text-brand">{{ \App\Models\NewsItem::TYPES[$item->type] ?? 'Noticia' }}</span>
+                    <p class="text-sm font-medium leading-tight mt-1 line-clamp-2">{{ $item->title }}</p>
+                    @if($item->excerpt)
+                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ $item->excerpt }}</p>
+                    @endif
+                </div>
+            </a>
+        @endforeach
+    </div>
+</section>
+@endif
+
 {{-- CATEGORÍAS --}}
 <section class="max-w-7xl mx-auto px-4 py-14">
     <div class="flex items-end justify-between mb-6">
@@ -126,6 +184,42 @@
         @endforeach
     </div>
 </section>
+
+{{-- TIENDAS ASOCIADAS (dropshipping / afiliación) --}}
+@if($dropshipping->isNotEmpty())
+<section class="bg-gradient-to-r from-amber-50 to-rose-50 border-y border-amber-100">
+    <div class="max-w-7xl mx-auto px-4 py-12">
+        <div class="flex items-end justify-between mb-6">
+            <div>
+                <h2 class="text-2xl md:text-3xl font-black">Comprar en tiendas asociadas</h2>
+                <p class="text-sm text-gray-600 mt-1">Productos de Shein, AliExpress, Amazon y más — canalizados con precio marcado. La tienda original gestiona el pago y el envío.</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            @foreach($dropshipping as $product)
+                <div class="bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-lg transition flex flex-col">
+                    <a href="{{ route('products.show', $product) }}" class="block aspect-[3/4] bg-gray-100 overflow-hidden">
+                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}"
+                             class="w-full h-full object-cover hover:scale-110 transition duration-500">
+                    </a>
+                    <div class="p-3 flex-1 flex flex-col">
+                        <span class="text-[10px] uppercase tracking-wider text-amber-700 bg-amber-100 inline-block px-1.5 py-0.5 rounded w-fit">{{ ucfirst($product->external_store ?? 'Tienda') }}</span>
+                        <a href="{{ route('products.show', $product) }}" class="text-sm font-medium mt-1 line-clamp-2 hover:text-brand">{{ $product->name }}</a>
+                        <div class="mt-auto pt-2 flex items-center justify-between">
+                            <span class="font-bold text-sm">{{ number_format($product->current_price, 2, ',', '.') }} €</span>
+                            <a href="{{ route('affiliate.redirect', $product) }}"
+                               target="_blank" rel="noopener noreferrer nofollow sponsored"
+                               class="text-xs bg-black text-white px-3 py-1.5 rounded-full hover:bg-gray-800">
+                                Comprar →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
 
 {{-- PROMESAS --}}
 <section class="bg-ink text-white my-10">

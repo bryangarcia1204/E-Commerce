@@ -17,14 +17,21 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'name', 'slug', 'description', 'price',
         'discount_price', 'stock', 'image', 'is_active', 'is_featured',
+        // Dropshipping / afiliación
+        'external_store', 'external_product_id', 'external_url',
+        'affiliate_tag', 'cost_price', 'commission_rate',
+        'commission_type', 'is_dropshipping',
     ];
 
     protected $casts = [
         'price'           => 'decimal:2',
         'discount_price'  => 'decimal:2',
+        'cost_price'      => 'decimal:2',
+        'commission_rate' => 'decimal:2',
         'stock'           => 'integer',
         'is_active'       => 'boolean',
         'is_featured'     => 'boolean',
+        'is_dropshipping' => 'boolean',
         'deleted_at'      => 'datetime',
     ];
 
@@ -83,6 +90,67 @@ class Product extends Model
         }
 
         return (int) round((1 - $this->discount_price / $this->price) * 100);
+    }
+
+    /**
+     * URL de afiliado: external_url con el tag de afiliado inyectado como
+     * query string. Si no hay external_url ni tag, devuelve la URL interna
+     * del producto. Esto es lo que se usa en el botón "Comprar en {tienda}".
+     */
+    public function getAffiliateUrlAttribute(): string
+    {
+        if (! $this->external_url) {
+            return route('products.show', $this);
+        }
+
+        if (! $this->affiliate_tag) {
+            return $this->external_url;
+        }
+
+        $sep = str_contains($this->external_url, '?') ? '&' : '?';
+
+        // Cada tienda usa su propio parámetro de afiliado; mapeamos los
+        // conocidos y, por defecto, usamos ?affid=. Esto evita hardcodear
+        // el parámetro de una sola plataforma.
+        $param = match ($this->external_store) {
+            'amazon'      => 'tag',
+            'aliexpress'  => 'aff_fcid',
+            'shein'       => 'url_from',
+            default       => 'affid',
+        };
+
+        return $this->external_url.$sep.http_build_query([$param => $this->affiliate_tag]);
+    }
+
+    /**
+     * Margen unitario = precio de venta efectivo - coste. Cero si el
+     * producto no es dropshipping o no tiene cost_price.
+     */
+    public function getUnitProfitAttribute(): float
+    {
+        if (! $this->is_dropshipping || $this->cost_price === null) {
+            return 0.0;
+        }
+
+        return round($this->current_price - (float) $this->cost_price, 2);
+    }
+
+    /**
+     * Comisión estimada por unidad (lo que la tienda paga al promotor
+     * por canalizar la venta). Aplica commission_rate sobre el precio
+     * de venta (percent) o como importe fijo (fixed).
+     */
+    public function getUnitCommissionAttribute(): float
+    {
+        if (! $this->is_dropshipping || (float) $this->commission_rate <= 0) {
+            return 0.0;
+        }
+
+        if ($this->commission_type === 'fixed') {
+            return (float) $this->commission_rate;
+        }
+
+        return round($this->current_price * (float) $this->commission_rate / 100, 2);
     }
 
     /**

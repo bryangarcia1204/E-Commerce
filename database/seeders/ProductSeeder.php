@@ -45,5 +45,55 @@ class ProductSeeder extends Seeder
                 'is_featured'    => $i < 8,
             ]);
         }
+
+        // Productos dropshipping (tiendas asociadas). El precio incluye
+        // margen sobre el coste; al comprar, el usuario es redirigido a la
+        // tienda original con nuestro tag de afiliado.
+        $dropshipping = [
+            ['name' => 'Vestido midi floral Shein', 'store' => 'shein', 'cost' => 2.30, 'sale' => 3.20, 'commission' => 5, 'cat' => 'Vestidos'],
+            ['name' => 'Top cropped básico Shein', 'store' => 'shein', 'cost' => 1.80, 'sale' => 2.95, 'commission' => 5, 'cat' => 'Tops'],
+            ['name' => 'Zapatillas chunky AliExpress', 'store' => 'aliexpress', 'cost' => 8.50, 'sale' => 14.90, 'commission' => 8, 'cat' => 'Calzado'],
+            ['name' => 'Bolso tote AliExpress', 'store' => 'aliexpress', 'cost' => 6.20, 'sale' => 12.50, 'commission' => 8, 'cat' => 'Bolsos'],
+            ['name' => 'Gafas de sol Amazon', 'store' => 'amazon', 'cost' => 4.00, 'sale' => 9.99, 'commission' => 4, 'cat' => 'Accesorios'],
+            ['name' => 'Reloj minimalista Amazon', 'store' => 'amazon', 'cost' => 7.50, 'sale' => 19.90, 'commission' => 4, 'cat' => 'Accesorios'],
+            ['name' => 'Camiseta estampada Zara', 'store' => 'zara', 'cost' => 5.90, 'sale' => 9.95, 'commission' => 3, 'cat' => 'Camisetas'],
+            ['name' => 'Falda plisada Zara', 'store' => 'zara', 'cost' => 12.90, 'sale' => 19.95, 'commission' => 3, 'cat' => 'Faldas'],
+        ];
+
+        $storeUrls = [
+            'shein'      => 'https://www.shein.com/es/product-p-{{id}}.html',
+            'aliexpress' => 'https://www.aliexpress.com/item/{{id}}.html',
+            'amazon'     => 'https://www.amazon.com/dp/{{id}}',
+            'zara'       => 'https://www.zara.com/es/es/product.{{id}}.html',
+        ];
+
+        foreach ($dropshipping as $k => $dp) {
+            $cat = $categories->firstWhere('name', $dp['cat']) ?? $categories->random();
+            $extId = 'MODA-'.strtoupper($dp['store']).'-'.(1000 + $k);
+            $urlTemplate = $storeUrls[$dp['store']] ?? 'https://example.com/p/{{id}}';
+
+            Product::create([
+                'category_id'      => $cat->id,
+                'name'             => $dp['name'],
+                'slug'             => Str::slug($dp['name']).'-'.($k + 1),
+                'description'      => "Producto de tienda asociada ({$dp['store']}). Se compra directamente en la tienda original a través de nuestro enlace de afiliado. Envío y devoluciones gestionados por la tienda.",
+                'price'            => $dp['sale'],
+                'discount_price'   => null,
+                // Stock alto: lo gestiona la tienda externa, no limita la compra.
+                'stock'            => 999,
+                'image'            => null,
+                'is_active'        => true,
+                'is_featured'      => $k < 4,
+                // Dropshipping / afiliación
+                'is_dropshipping'  => true,
+                'external_store'   => $dp['store'],
+                'external_product_id' => $extId,
+                'external_url'     => str_replace('{{id}}', $extId, $urlTemplate),
+                'affiliate_tag'    => 'modaaffil-21',
+                'cost_price'       => $dp['cost'],
+                'commission_rate'  => $dp['commission'],
+                'commission_type'  => 'percent',
+            ]);
+        }
     }
 }

@@ -3,10 +3,14 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\AffiliateRedirectController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +34,35 @@ Route::middleware('throttle:web')->prefix('carrito')->name('cart.')->group(funct
     Route::delete('/eliminar/{product}', [CartController::class, 'remove'])->name('remove');
     Route::post('/vaciar', [CartController::class, 'clear'])->name('clear');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Páginas institucionales (footer) + formulario de contacto
+|--------------------------------------------------------------------------
+*/
+Route::name('pages.')->group(function () {
+    Route::get('/envios', [PageController::class, 'shipping'])->name('envios');
+    Route::get('/devoluciones', [PageController::class, 'returns'])->name('devoluciones');
+    Route::get('/privacidad', [PageController::class, 'privacy'])->name('privacidad');
+    Route::get('/terminos', [PageController::class, 'terms'])->name('terminos');
+    Route::get('/sobre-nosotros', [PageController::class, 'about'])->name('nosotros');
+    Route::get('/novedades', [PageController::class, 'news'])->name('novedades');
+});
+
+// Contacto: el GET es público, el POST va con throttle:web anti-spam.
+Route::get('/contacto', [ContactController::class, 'create'])->name('pages.contacto');
+Route::post('/contacto', [ContactController::class, 'store'])
+    ->middleware('throttle:web')
+    ->name('contacto.store');
+
+/*
+|--------------------------------------------------------------------------
+| Afiliación: punto único de salida a tiendas externas (dropshipping).
+| Público (si el usuario está logueado se vincula al clic para auditoría).
+|--------------------------------------------------------------------------
+*/
+Route::get('/ir/{product}', [AffiliateRedirectController::class, 'redirect'])
+    ->name('affiliate.redirect');
 
 /*
 |--------------------------------------------------------------------------
@@ -65,6 +98,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Métodos de pago guardados. La autorización por usuario la hace
+    // PaymentMethodPolicy en setDefault/destroy (anti IDOR).
+    Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment-methods.store');
+    Route::patch('/payment-methods/{paymentMethod}/default', [PaymentMethodController::class, 'setDefault'])->name('payment-methods.default');
+    Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy');
 });
 
 /*

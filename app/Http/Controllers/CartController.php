@@ -12,6 +12,9 @@ class CartController extends Controller
 
     public function index()
     {
+        // Refrescamos el carrito para mostrar precios/stock reales.
+        $this->cart->sync();
+
         return view('cart.index', [
             'items'    => $this->cart->content(),
             'subtotal' => $this->cart->subtotal(),
@@ -24,7 +27,12 @@ class CartController extends Controller
     {
         $qty = max(1, (int) $request->input('quantity', 1));
 
-        if ($product->stock < 1) {
+        // Validamos también que el producto esté publicado.
+        if (! $product->is_active) {
+            return back()->with('error', 'Este producto ya no está disponible.');
+        }
+
+        if (! $product->isInStock(1)) {
             return back()->with('error', 'Producto sin stock.');
         }
 
@@ -37,7 +45,7 @@ class CartController extends Controller
     {
         $qty = (int) $request->input('quantity', 1);
         $this->cart->update($product->id, $qty);
-        return back();
+        return back()->with('success', 'Carrito actualizado.');
     }
 
     public function remove(Product $product)
@@ -49,6 +57,6 @@ class CartController extends Controller
     public function clear()
     {
         $this->cart->clear();
-        return back();
+        return back()->with('success', 'Carrito vaciado.');
     }
 }

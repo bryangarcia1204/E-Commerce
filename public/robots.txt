@@ -1,2 +1,15 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /carrito
+Disallow: /checkout
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /mis-pedidos
+Disallow: /profile
+Disallow: /password-reset
+Disallow: /api
+
+# Sitemap (publicarlo cuando exista)
+# Sitemap: https://tudominio.com/sitemap.xml

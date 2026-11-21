@@ -13,13 +13,13 @@
         {{-- Galería --}}
         <div>
             <div class="aspect-[3/4] rounded-3xl overflow-hidden bg-gray-100 mb-3">
-                <img src="{{ $product->image }}" class="w-full h-full object-cover" alt="{{ $product->name }}">
+                <img src="{{ $product->image_url }}" class="w-full h-full object-cover" alt="{{ $product->name }}">
             </div>
             @if($product->images->isNotEmpty())
                 <div class="grid grid-cols-4 gap-3">
                     @foreach($product->images as $img)
                         <div class="aspect-square rounded-xl overflow-hidden bg-gray-100 ring-1 ring-transparent hover:ring-ink transition cursor-pointer">
-                            <img src="{{ $img->path }}" class="w-full h-full object-cover" alt="">
+                            <img src="{{ $img->url }}" class="w-full h-full object-cover" alt="">
                         </div>
                     @endforeach
                 </div>
@@ -33,11 +33,6 @@
                 <h1 class="text-3xl md:text-4xl font-black mt-1">{{ $product->name }}</h1>
             </div>
 
-            <div class="flex items-center gap-2 text-sm">
-                <div class="flex text-amber-400">★★★★★</div>
-                <span class="text-gray-600">4.8 · 124 valoraciones</span>
-            </div>
-
             <div class="flex items-baseline gap-3">
                 <span class="text-4xl font-black">{{ number_format($product->current_price, 2, ',', '.') }} €</span>
                 @if($product->discount_percent)
@@ -46,31 +41,34 @@
                 @endif
             </div>
 
-            <div>
+            <div x-data="{ size: '' }">
                 <p class="text-sm font-semibold mb-2">Talla</p>
                 <div class="flex flex-wrap gap-2">
                     @foreach(['XS','S','M','L','XL'] as $size)
-                        <button type="button"
-                            class="min-w-[52px] h-11 border border-gray-300 rounded-xl text-sm font-medium hover:border-ink hover:bg-ink hover:text-white transition">
+                        <button type="button" @click="size = '{{ $size }}'"
+                            :class="size === '{{ $size }}' ? 'border-ink bg-ink text-white' : 'border-gray-300 hover:border-ink hover:bg-ink hover:text-white'"
+                            class="min-w-[52px] h-11 border rounded-xl text-sm font-medium transition">
                             {{ $size }}
                         </button>
                     @endforeach
                 </div>
-            </div>
+                <p class="text-[11px] text-gray-400 mt-1">Selecciona tu talla antes de añadir al carrito.</p>
 
-            <form method="POST" action="{{ route('cart.add', $product) }}" class="flex gap-3">
-                @csrf
-                <input type="number" name="quantity" value="1" min="1" max="{{ $product->stock }}"
-                    class="w-20 border border-gray-300 rounded-xl text-center focus:border-ink focus:ring-0">
-                <button type="submit"
-                    class="flex-1 bg-ink text-white rounded-xl py-3 font-semibold hover:bg-brand transition disabled:opacity-50"
-                    {{ $product->stock < 1 ? 'disabled' : '' }}>
-                    {{ $product->stock < 1 ? 'Sin stock' : 'Añadir al carrito' }}
-                </button>
-                <button type="button" class="w-12 h-12 border border-gray-300 rounded-xl flex items-center justify-center hover:bg-gray-50 transition">
-                    <x-icon name="heart" class="w-5 h-5"/>
-                </button>
-            </form>
+                <form method="POST" action="{{ route('cart.add', $product) }}" class="flex gap-3 mt-4">
+                    @csrf
+                    <input type="hidden" name="size" :value="size">
+                    <input type="number" name="quantity" value="1" min="1" max="{{ $product->stock }}"
+                        class="w-20 border border-gray-300 rounded-xl text-center focus:border-ink focus:ring-0">
+                    <button type="submit"
+                        class="flex-1 bg-ink text-white rounded-xl py-3 font-semibold hover:bg-brand transition disabled:opacity-50"
+                        {{ $product->stock < 1 ? 'disabled' : '' }}>
+                        {{ $product->stock < 1 ? 'Sin stock' : 'Añadir al carrito' }}
+                    </button>
+                    <button type="button" class="w-12 h-12 border border-gray-300 rounded-xl flex items-center justify-center hover:bg-gray-50 transition">
+                        <x-icon name="heart" class="w-5 h-5"/>
+                    </button>
+                </form>
+            </div>
 
             <div class="text-xs text-gray-500 space-y-1 border border-gray-100 rounded-xl p-3 bg-gray-50">
                 <p>✅ Stock: {{ $product->stock }} uds.</p>

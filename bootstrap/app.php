@@ -12,6 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Cabeceras de seguridad para producción (HSTS, X-Frame-Options,
+        // X-Content-Type-Options, Referrer-Policy, Permissions-Policy).
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        // Confianza de proxies (balanceadores / CDN / terminación TLS).
+        $middleware->trustProxies(at: '*');
+
+        // Alias de middleware de la aplicación.
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);

@@ -16,6 +16,35 @@
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
+        <!-- Phone (opcional) -->
+        <div class="mt-4">
+            <x-input-label for="phone" :value="__('Teléfono (opcional)')" />
+            <x-text-input id="phone" class="block mt-1 w-full" type="tel" name="phone" :value="old('phone')" autocomplete="tel" />
+            <x-input-error :messages="$errors->get('phone')" class="mt-2" />
+        </div>
+
+        <!-- Dirección de envío preferida (opcional, acelera el checkout) -->
+        <div class="mt-4">
+            <x-input-label for="default_shipping_address" :value="__('Dirección de envío preferida (opcional)')" />
+            <textarea id="default_shipping_address" name="default_shipping_address" rows="2"
+                      class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                      autocomplete="street-address">{{ old('default_shipping_address') }}</textarea>
+            <x-input-error :messages="$errors->get('default_shipping_address')" class="mt-2" />
+        </div>
+
+        <!-- Método de pago preferido (opcional) -->
+        <div class="mt-4">
+            <x-input-label for="preferred_payment_method" :value="__('Método de pago preferido (opcional)')" />
+            <select id="preferred_payment_method" name="preferred_payment_method"
+                    class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                @foreach (\App\Models\User::PAYMENTS as $slug => $label)
+                    <option value="{{ $slug }}" @selected(old('preferred_payment_method', 'card') === $slug)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <x-input-error :messages="$errors->get('preferred_payment_method')" class="mt-2" />
+            <p class="text-xs text-gray-500 mt-1">Podrás añadir tarjetas/PayPal desde tu perfil. Nunca guardamos los datos completos de tu tarjeta.</p>
+        </div>
+
         <!-- Password -->
         <div class="mt-4">
             <x-input-label for="password" :value="__('Password')" />

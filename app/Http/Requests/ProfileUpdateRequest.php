@@ -26,6 +26,10 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            // Datos de cliente opcionales para acelerar el checkout.
+            'phone' => ['nullable', 'string', 'max:30'],
+            'default_shipping_address' => ['nullable', 'string', 'max:500'],
+            'preferred_payment_method' => ['nullable', 'string', 'in:'.implode(',', array_keys(User::PAYMENTS))],
         ];
     }
 }

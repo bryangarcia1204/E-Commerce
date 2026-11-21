@@ -58,7 +58,7 @@
     <div>
         <label class="block text-sm font-semibold mb-1">Imagen</label>
         @if($product->image)
-            <img src="{{ $product->image }}" class="w-24 h-32 object-cover rounded-lg mb-2" alt="">
+            <img src="{{ $product->image_url }}" class="w-24 h-32 object-cover rounded-lg mb-2 bg-gray-100" alt="">
         @endif
         <input type="file" name="image" accept="image/*"
             class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:border-ink focus:ring-0">

@@ -134,13 +134,13 @@ class CacheService
             // también en graceful y servirá desde BD.
         }
 
-        // Esquema 's2': los hot paths ahora cachean HTML renderizado (no
-        // objetos Eloquent). Al incluir :s2: en la clave, las entradas viejas
-        // (formato sin esquema, que guardaban Collections y provocaban
-        // "incomplete object" al deserializar) quedan huérfanas y expiran por
-        // TTL → migración self-healing sin necesidad de cache:clear manual.
+        // Esquema 's3': las tarjetas/detalle ahora llevan botón wishlist
+        // (data-wishlist). s2 cacheaba HTML sin el botón; sin bump, tras
+        // desplegar se serviría el HTML viejo (sin data-wishlist) y el JS no
+        // encontraría corazones hasta expirar el TTL. Al pasar a :s3: las
+        // entradas s2 quedan huérfanas y expiran → migración self-healing.
         // Subir este valor si vuelve a cambiar el formato del valor cacheado.
-        return "{$namespace}:v{$version}:s2:" . preg_replace('/[^a-zA-Z0-9_.\-:]/', '', $suffix);
+        return "{$namespace}:v{$version}:s3:" . preg_replace('/[^a-zA-Z0-9_.\-:]/', '', $suffix);
     }
 
     private function store(): ?string

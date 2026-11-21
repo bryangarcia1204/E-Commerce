@@ -90,6 +90,13 @@ class AccountDeletionService
                     DB::table('carts')->where('id', $cartId)->delete();
                 }
 
+                // 7b2) Favoritos del usuario (wishlists): preferencias
+                //    personales, sin valor contable. Borrado físico (la FK
+                //    cascadeOnDelete lo haría igual, pero lo contamos para
+                //    auditoría).
+                $wishlistCount = DB::table('wishlists')->where('user_id', $userId)->count();
+                DB::table('wishlists')->where('user_id', $userId)->delete();
+
                 // 7c) Liquidaciones (settlements): NO se borran (traza
                 //    contable/fiscal). Se anonimizan desvinculando user_id
                 //    (nullOnDelete lo haría igual, pero lo hacemos explícito
@@ -111,6 +118,7 @@ class AccountDeletionService
                     'payment_methods_deleted' => $paymentsCount,
                     'wallet_transactions_deleted' => $walletCount,
                     'cart_deleted' => $cartId !== null,
+                    'wishlist_deleted' => $wishlistCount,
                     'settlements_anonymized' => $settlementsCount,
                 ]);
             });

@@ -1,0 +1,80 @@
+{
+  "_note": "Feed de EJEMPLO para probar `php artisan products:import --path=database/feeds/sample_products.json`. Son datos sintéticos (nombres/URLs ilustrativos), NO extraídos de tiendas reales. En producción sustituye este fichero por un feed real de tu programa de afiliados (AliExpress Portals, Amazon Product Advertising API, Awin/CJ CSV) o de tu proveedor dropshipping (Spocket/Modalyst/DSers JSON). El comando acepta los sinónimos de campo habituales de esos feeds (title/name, cost/cost_price, image/image_url...).",
+  "products": [
+    {
+      "external_store": "aliexpress",
+      "external_product_id": "1005006298765432",
+      "external_url": "https://www.aliexpress.com/item/1005006298765432.html",
+      "name": "Vestido midi floral de verano",
+      "description": "Vestido midi con estampado floral, tejido ligero y transpirable. Ideal para primavera y verano.",
+      "image": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=600",
+      "cost_price": 11.90,
+      "commission_rate": 8,
+      "commission_type": "percent",
+      "category_slug": "vestidos",
+      "stock": 999,
+      "is_featured": true
+    },
+    {
+      "external_store": "aliexpress",
+      "external_product_id": "1005006312345678",
+      "external_url": "https://www.aliexpress.com/item/1005006312345678.html",
+      "name": "Zapatillas deportivas unisex minimalistas",
+      "description": "Zapatillas ligeras con suela flexible y diseño minimalista. Comodidad para todo el día.",
+      "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600",
+      "cost_price": 18.50,
+      "commission_rate": 6,
+      "commission_type": "percent",
+      "category_slug": "calzado"
+    },
+    {
+      "external_store": "amazon",
+      "external_product_id": "B08XYZ12345",
+      "external_url": "https://www.amazon.com/dp/B08XYZ12345",
+      "name": "Bolso de mano cuero sintético",
+      "description": "Bolso estructurado de cuero sintético con bandolera extraíble. Compartimentos internos organizados.",
+      "image": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600",
+      "cost_price": 22.00,
+      "commission_rate": 4,
+      "commission_type": "percent",
+      "category_slug": "accesorios",
+      "is_featured": true
+    },
+    {
+      "external_store": "shein",
+      "external_product_id": "pdp1234567",
+      "external_url": "https://www.shein.com/p-pdp1234567.html",
+      "name": "Camiseta básica oversized algodón",
+      "description": "Camiseta de algodón peinado, corte oversized y cuello redondo. Talla única reversible.",
+      "image": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600",
+      "cost_price": 4.20,
+      "commission_rate": 9,
+      "commission_type": "percent",
+      "category_slug": "camisetas"
+    },
+    {
+      "external_store": "asos",
+      "external_product_id": "asos-204881",
+      "external_url": "https://www.asos.com/asos-design/asos-design-chaqueta-vaquera/prd/204881",
+      "name": "Chaqueta vaquera cropped deinitiva",
+      "description": "Chaqueta vaquera de corte cropped con botones metálicos. Un básico atemporal.",
+      "image": "https://images.unsplash.com/photo-1551537484-f555339d6bfd?w=600",
+      "cost_price": 26.30,
+      "commission_rate": 5,
+      "commission_type": "percent",
+      "category_slug": "chaquetas"
+    },
+    {
+      "external_store": "aliexpress",
+      "external_product_id": "1005006998877665",
+      "external_url": "https://www.aliexpress.com/item/1005006998877665.html",
+      "name": "Gafas de sol cat-eye UV400",
+      "description": "Gafas de sol con protección UV400 y montura cat-eye. Incluyen estuche rígido.",
+      "image": "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600",
+      "price": 19.99,
+      "commission_rate": 10,
+      "commission_type": "percent",
+      "category_slug": "accesorios"
+    }
+  ]
+}

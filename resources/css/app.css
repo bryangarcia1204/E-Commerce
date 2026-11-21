@@ -24,6 +24,13 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+    /* Wishlist: corazón "favorito" activo. Los botones data-wishlist viven
+       en HTML cacheado (neutral); resources/js/wishlist.js añade .is-active
+       según window.wishlistIds. x-icon usa fill="none" + stroke="currentColor",
+       así que rellenamos el corazón con fill: currentColor en estado activo. */
+    .wishlist-btn.is-active { color: var(--color-brand); }
+    .wishlist-btn.is-active svg { fill: currentColor; }
+
     /* Animaciones suaves */
     .fade-in { animation: fadeIn .4s ease both; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

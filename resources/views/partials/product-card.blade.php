@@ -20,21 +20,38 @@
                 @endif
             </div>
 
-            {{-- Wishlist (UI) --}}
+            {{-- Wishlist: botón NEUTRO (data-wishlist). El estado "¿es favorito
+                de ESTE usuario?" depende del usuario y no se puede hornear en
+                el HTML cacheado; lo gestiona resources/js/wishlist.js leyendo
+                window.wishlistIds y haciendo toggle por fetch con el token CSRF
+                del <meta>. La URL sí es determinista por producto (slug). --}}
             <button type="button"
-                class="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-white hover:scale-110">
-                <x-icon name="heart" class="w-4 h-4"/>
+                data-wishlist
+                data-wishlist-id="{{ $product->id }}"
+                data-wishlist-url="{{ route('wishlist.toggle', $product) }}"
+                aria-label="Añadir a favoritos"
+                class="wishlist-btn absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-white hover:scale-110">
+                <x-icon name="heart" class="w-4 h-4 wishlist-icon"/>
             </button>
 
             {{-- Quick add --}}
             <div class="absolute inset-x-2 bottom-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition">
                 <form method="POST" action="{{ route('cart.add', $product) }}">
-                    {{-- Placeholder de token CSRF: el HTML de esta tarjeta se
-                        cachea (home/catálogo/detalle). El controlador sustituye
-                        __CSRF_TOKEN__ por csrf_token() real en cada request,
-                        así el blob cacheado nunca contiene un token de sesión
-                        congelado (que causaría 419 a otros usuarios). --}}
-                    <input type="hidden" name="_token" value="__CSRF_TOKEN__">
+                    @php
+                        // $cached indica si esta tarjeta vive en HTML cacheado
+                        // (home/catálogo/detalle). En ese caso usamos un
+                        // placeholder __CSRF_TOKEN__ que el controlador sustituye
+                        // por csrf_token() real en cada request (evita 419 entre
+                        // usuarios). En contextos NO cacheados (p.ej. la página
+                        // /favoritos, que se renderiza fresca por usuario) usamos
+                        // @csrf real directamente. Default true = cacheado.
+                        $cached = $cached ?? true;
+                    @endphp
+                    @if($cached)
+                        <input type="hidden" name="_token" value="__CSRF_TOKEN__">
+                    @else
+                        @csrf
+                    @endif
                     <input type="hidden" name="quantity" value="1">
                     <button type="submit"
                         class="w-full bg-ink/95 backdrop-blur text-white text-xs font-semibold py-2.5 rounded-full hover:bg-brand transition">

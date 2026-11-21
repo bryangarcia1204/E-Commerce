@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -111,6 +112,35 @@ class User extends Authenticatable implements MustVerifyEmail
     public function settlements(): HasMany
     {
         return $this->hasMany(Settlement::class);
+    }
+
+    /**
+     * Filas de la tabla `wishlists` del usuario (par user_id+product_id).
+     */
+    public function wishlist(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    /**
+     * Productos marcados como favoritos (vía pivot `wishlists`). Útil para
+     * listar la página de favoritos sin un join manual.
+     */
+    public function wishlistProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
+    }
+
+    /**
+     * IDs de productos en favoritos del usuario. Cacheado en memoria por
+     * request (se pinta en varios corazones + el badge del header; evita
+     * N queries). Lo inyecta el layout en window.wishlistIds para el JS.
+     *
+     * @return array<int, int>
+     */
+    public function wishlistProductIds(): array
+    {
+        return $this->wishlist()->pluck('product_id')->all();
     }
 
     /**

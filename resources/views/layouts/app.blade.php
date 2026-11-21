@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @php
+        // IDs de favoritos del usuario (1 query pluck; reusado para el script y
+        // el badge del header). [] para invitados. Lo lee resources/js/wishlist.js.
+        $wishlistIds = auth()->check() ? auth()->user()->wishlistProductIds() : [];
+    @endphp
+    @auth
+        <script>window.wishlistIds = @json($wishlistIds); window.isUserAuth = true;</script>
+    @else
+        <script>window.wishlistIds = []; window.isUserAuth = false; window.loginUrl = @json(route('login'));</script>
+    @endauth
     <meta name="description" content="@yield('description', 'MODA: tienda online de moda. Envío gratis desde 50 € y devoluciones en 30 días.')">
     <link rel="canonical" href="{{ url()->current() }}">
     <title>@yield('title', 'MODA — Tienda online')</title>
@@ -63,6 +73,23 @@
                     <a href="{{ route('register') }}"
                        class="hidden md:flex px-3 py-2 rounded-full bg-ink text-white hover:bg-gray-800 text-sm font-medium">
                         Registro
+                    </a>
+                @endauth
+
+                @auth
+                    <a href="{{ route('wishlist.index') }}"
+                       class="relative flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-gray-100 text-sm font-medium"
+                       data-wishlist-badge>
+                        <x-icon name="heart" class="w-5 h-5"/>
+                        <span class="hidden md:inline">Favoritos</span>
+                        <span class="absolute md:static md:ml-1 -top-1 -right-1 bg-brand text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"
+                              data-wishlist-count>{{ count($wishlistIds) }}</span>
+                    </a>
+                @else
+                    <a href="{{ route('login') }}"
+                       class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-gray-100 text-sm font-medium">
+                        <x-icon name="heart" class="w-5 h-5"/>
+                        <span>Favoritos</span>
                     </a>
                 @endauth
 

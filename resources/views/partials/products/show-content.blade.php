@@ -63,8 +63,13 @@
                         {{ $product->stock < 1 ? 'disabled' : '' }}>
                         {{ $product->stock < 1 ? 'Sin stock' : 'Añadir al carrito' }}
                     </button>
-                    <button type="button" class="w-12 h-12 border border-gray-300 rounded-xl flex items-center justify-center hover:bg-gray-50 transition">
-                        <x-icon name="heart" class="w-5 h-5"/>
+                    <button type="button"
+                        data-wishlist
+                        data-wishlist-id="{{ $product->id }}"
+                        data-wishlist-url="{{ route('wishlist.toggle', $product) }}"
+                        aria-label="Añadir a favoritos"
+                        class="wishlist-btn w-12 h-12 border border-gray-300 rounded-xl flex items-center justify-center hover:bg-gray-50 transition">
+                        <x-icon name="heart" class="w-5 h-5 wishlist-icon"/>
                     </button>
                 </form>
             </div>

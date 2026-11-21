@@ -14,6 +14,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -88,6 +89,22 @@ Route::middleware('auth')->prefix('checkout')->name('checkout.')->group(function
 Route::middleware('auth')->group(function () {
     Route::get('/mis-pedidos', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/mis-pedidos/{order}', [OrderController::class, 'show'])->name('orders.show');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Favoritos / wishlist (auth, persistente en BD)
+| Las tarjetas y el detalle se cachean como HTML, así que el botón corazón
+| es neutro (data-wishlist) y el JS del layout gestiona estado + toggle por
+| fetch. /favoritos/ids va antes que /{product} para que el slug no capture
+| "ids".
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->name('wishlist.')->group(function () {
+    Route::get('/favoritos', [WishlistController::class, 'index'])->middleware('throttle:storefront')->name('index');
+    Route::get('/favoritos/ids', [WishlistController::class, 'ids'])->name('ids');
+    Route::post('/favoritos/{product}', [WishlistController::class, 'toggle'])->middleware('throttle:web')->name('toggle');
+    Route::delete('/favoritos/{product}', [WishlistController::class, 'destroy'])->middleware('throttle:web')->name('destroy');
 });
 
 /*

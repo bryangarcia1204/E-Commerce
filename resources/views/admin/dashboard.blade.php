@@ -23,6 +23,36 @@
     </div>
 </div>
 
+{{-- Finanzas dropshipping (agregado, sin secretos de usuarios) --}}
+<div class="bg-white rounded-2xl shadow-sm p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold">Flujo de caja dropshipping</h2>
+        <a href="{{ route('admin.settlements.index') }}" class="text-sm text-gray-500 hover:text-ink">Liquidaciones →</a>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+        <div class="rounded-lg bg-amber-50 p-3">
+            <p class="text-xs text-amber-700 uppercase">Por cobrar (cliente)</p>
+            <p class="font-black text-lg mt-1">{{ number_format((float) $pendingReceivable, 2, ',', '.') }} €</p>
+        </div>
+        <div class="rounded-lg bg-blue-50 p-3">
+            <p class="text-xs text-blue-700 uppercase">Comisión por cobrar</p>
+            <p class="font-black text-lg mt-1">{{ number_format((float) $pendingCommission, 2, ',', '.') }} €</p>
+        </div>
+        <div class="rounded-lg bg-red-50 p-3">
+            <p class="text-xs text-red-700 uppercase">Por pagar (proveedor)</p>
+            <p class="font-black text-lg mt-1">{{ number_format((float) $pendingPayable, 2, ',', '.') }} €</p>
+        </div>
+        <div class="rounded-lg bg-green-50 p-3">
+            <p class="text-xs text-green-700 uppercase">Margen realizado</p>
+            <p class="font-black text-lg mt-1">{{ number_format((float) $realizedMargin, 2, ',', '.') }} €</p>
+        </div>
+        <div class="rounded-lg bg-green-50 p-3">
+            <p class="text-xs text-green-700 uppercase">Comisión realizada</p>
+            <p class="font-black text-lg mt-1">{{ number_format((float) $realizedCommission, 2, ',', '.') }} €</p>
+        </div>
+    </div>
+</div>
+
 <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-bold">Últimos pedidos</h2>

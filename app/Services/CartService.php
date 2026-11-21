@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use Illuminate\Support\Collection;
 
 class CartService
 {
@@ -20,18 +21,23 @@ class CartService
         $cart = $this->content();
         $id = $product->id;
 
-        if (isset($cart[$id])) {
-            $cart[$id]['quantity'] = min($cart[$id]['quantity'] + $qty, $product->stock);
-        } else {
-            $cart[$id] = [
-                'id'       => $product->id,
-                'name'     => $product->name,
-                'slug'     => $product->slug,
-                'price'    => $product->current_price,
-                'image'    => $product->image,
-                'quantity' => max(1, min($qty, $product->stock)),
-            ];
+        $currentQty = isset($cart[$id]) ? (int) $cart[$id]['quantity'] : 0;
+        $maxAllowed = max(0, $product->stock);
+        $newQty     = min($currentQty + $qty, $maxAllowed);
+
+        if ($newQty < 1) {
+            // Sin stock real: no añadimos nada.
+            return;
         }
+
+        $cart[$id] = [
+            'id'       => $product->id,
+            'name'     => $product->name,
+            'slug'     => $product->slug,
+            'price'    => $product->current_price,
+            'image'    => $product->image_url,
+            'quantity' => $newQty,
+        ];
 
         session([self::SESSION_KEY => $cart]);
     }
@@ -39,13 +45,20 @@ class CartService
     public function update(int $productId, int $qty): void
     {
         $cart = $this->content();
-        if (!isset($cart[$productId])) return;
+        if (!isset($cart[$productId])) {
+            return;
+        }
 
         if ($qty <= 0) {
             unset($cart[$productId]);
         } else {
-            $cart[$productId]['quantity'] = $qty;
+            // Re-leemos stock real para no sobrepasarlo al cambiar cantidad.
+            $product = Product::select(['id', 'stock'])->find($productId);
+            $cart[$productId]['quantity'] = $product
+                ? min($qty, $product->stock)
+                : $qty;
         }
+
         session([self::SESSION_KEY => $cart]);
     }
 
@@ -91,5 +104,50 @@ class CartService
     public function isEmpty(): bool
     {
         return empty($this->content());
+    }
+
+    /**
+     * Recarga el carrito desde la base de datos: precios actuales, slugs,
+     * imagen y vigencia del producto (activo y no soft-deleted).
+     *
+     * Descarta líneas cuyo producto ya no existe o no está activo, para
+     * no facturar productos retirados del catálogo.
+     */
+    public function sync(): void
+    {
+        $cart = $this->content();
+        if (empty($cart)) {
+            return;
+        }
+
+        $ids = array_keys($cart);
+
+        /** @var Collection<int,Product> $products */
+        $products = Product::active()
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $fresh = [];
+        foreach ($cart as $id => $line) {
+            $product = $products->get($id);
+            if (! $product) {
+                // Producto retirado: se elimina del carrito.
+                continue;
+            }
+
+            $qty = max(1, min((int) $line['quantity'], $product->stock));
+
+            $fresh[$id] = [
+                'id'       => $product->id,
+                'name'     => $product->name,
+                'slug'     => $product->slug,
+                'price'    => $product->current_price,
+                'image'    => $product->image_url,
+                'quantity' => $qty,
+            ];
+        }
+
+        session([self::SESSION_KEY => $fresh]);
     }
 }

@@ -3,7 +3,7 @@
 <div class="group relative fade-in">
     <a href="{{ route('products.show', $product) }}" class="block">
         <div class="relative overflow-hidden rounded-2xl bg-gray-100 aspect-[3/4]">
-            <img src="{{ $product->image }}" alt="{{ $product->name }}" loading="lazy"
+            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy"
                  class="w-full h-full object-cover transition duration-700 group-hover:scale-110">
 
             {{-- Badges --}}
@@ -46,11 +46,6 @@
                 @if($percent)
                     <span class="text-xs text-gray-400 line-through">{{ number_format($product->price, 2, ',', '.') }} €</span>
                 @endif
-            </div>
-            <div class="flex items-center gap-1 text-xs text-gray-500">
-                <x-icon name="star" class="w-3 h-3 text-amber-400"/>
-                <span>4.8</span>
-                <span>(124)</span>
             </div>
         </div>
     </a>

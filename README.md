@@ -1,58 +1,96 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# MODA — Tienda online (Laravel + Breeze + Tailwind)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+E-commerce de moda con catálogo, carrito, checkout, panel de administración
+y API REST ligera. Construido sobre Laravel 11+ con Breeze (auth), Tailwind
+CSS 4 y Alpine.js.
 
-## About Laravel
+## Características
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Catálogo público**: home con destacados, novedades y ofertas; listado con
+  búsqueda, filtro por categoría y ordenación; ficha de producto con galería.
+- **Carrito en sesión**: añadir, actualizar cantidad, eliminar, vaciar. Envío
+  gratis a partir de 50 €.
+- **Checkout**: datos de envío validados, descuento de stock atómico en
+  transacción, email de confirmación encolaado, página de éxito.
+- **Historial de pedidos**: `/mis-pedidos` para clientes.
+- **Panel admin**: dashboard con métricas, gestión CRUD de productos (con
+  imágenes subidas al disco `public`), gestión de pedidos (listado + detalle
+  + cambio de estado). Acceso restringido por rol + `ProductPolicy`/
+  `OrderPolicy`.
+- **API REST**: `/api/products`, `/api/products/{slug}`, `/api/user`,
+  `/api/admin/stats` con throttle.
+- **Seguridad**: cabeceras HSTS/X-Frame/Referrer/Permissions-Policy, CSRF en
+  todas las escrituras, rate-limit en login y API, HTTPS forzado en
+  producción, mass-assignment del rol protegido, IDOR cerrado en pedidos.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requisitos
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.3+ (extensiones habituales de Laravel + `gd`/`imagick`)
+- MySQL 8 / MariaDB 10.6+ (o SQLite para desarrollo)
+- Composer 2.7+, Node 20+
+- (Opcional) Redis para cache/sesiones/cola
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Puesta en marcha (desarrollo)
 
 ```bash
-composer require laravel/boost --dev
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan storage:link
 
-php artisan boost:install
+# Base de datos: en .env usa sqlite para desarrollo local
+php artisan migrate
+php artisan db:seed           # crea admin + categorías + productos demo
+
+npm install
+npm run dev                   # o: php artisan serve + npm run dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Accede a `http://localhost:8000`. Para entrar al admin (`/admin`), usa la
+cuenta creada por `AdminUserSeeder` (ver consola al ejecutar el seeder).
 
-## Contributing
+## Puesta en producción
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Lee la guía completa: [`DEPLOY.md`](./DEPLOY.md). Resumen:
 
-## Code of Conduct
+```bash
+composer deploy               # instala, compila assets, cachea config/rutas/vistas
+php artisan migrate --force
+php artisan db:seed --class=AdminUserSeeder
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Estructura destacada
 
-## Security Vulnerabilities
+```
+app/
+  Http/Controllers/
+    HomeController, ProductController, CartController, CheckoutController,
+    OrderController                      # historial del cliente
+    Admin/DashboardController, ProductController, OrderController
+  Models/  Product (SoftDeletes), Order (STATUS_*), OrderItem, Category, User
+  Services/CartService                   # carrito en sesión + sync desde BD
+  Notifications/OrderConfirmation        # email encolaado tras checkout
+  Policies/ ProductPolicy, OrderPolicy
+  Http/Middleware/SecurityHeaders        # HSTS, X-Frame-Options, etc.
+database/migrations/                     # esquema + 3 migraciones de saneamiento
+routes/  web.php, api.php, auth.php
+resources/views/                         # Blade (storefront + admin + auth)
+public/img/placeholder.svg               # fallback local de imagen
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Tests
 
-## License
+```bash
+composer test        # = php artisan test (Pest)
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Notas
+
+- Las imágenes de producto se guardan en el disco `public` y se sirven vía el
+  symlink `public/storage`. **Obligatorio** ejecutar `php artisan storage:link`.
+- Si no hay imagen, se muestra `public/img/placeholder.svg` (sin llamadas a
+  servicios externos como picsum.photos).
+- El checkout es una demo: no integra una pasarela de pago real. El pedido
+  queda en estado `pending` hasta que un admin lo pase a `paid`/`shipped`/
+  `delivered`. Para integrar Stripe/Redsys/MercadoPago, añade las claves en
+  `.env` y sustituye el flujo de `CheckoutController::store`.

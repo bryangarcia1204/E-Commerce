@@ -13,11 +13,14 @@ class ProductController extends Controller
         $query = Product::active()->with('category');
 
         if ($request->filled('q')) {
-            $query->where('name', 'like', '%' . $request->q . '%');
+            // Usamos bindings parametrizados; Laravel ya escapa el LIKE.
+            $query->where('name', 'like', '%'.$request->q.'%');
         }
 
         if ($request->filled('category')) {
-            $query->whereHas('category', fn($q) => $q->where('slug', $request->category));
+            $query->whereHas('category', fn ($q) => $q
+                ->where('slug', $request->category)
+                ->where('is_active', true));
         }
 
         $query = match ($request->get('sort', 'newest')) {
@@ -27,7 +30,7 @@ class ProductController extends Controller
         };
 
         $products   = $query->paginate(12)->withQueryString();
-        $categories = Category::where('is_active', true)->get();
+        $categories = Category::where('is_active', true)->orderBy('name')->get();
 
         return view('products.index', compact('products', 'categories'));
     }
@@ -49,7 +52,12 @@ class ProductController extends Controller
 
     public function byCategory(Category $category, Request $request)
     {
-        $query = Product::active()->where('category_id', $category->id)->with('category');
+        // FIX: una categoría inactiva no debe seguir siendo enrutable.
+        abort_unless($category->is_active, 404);
+
+        $query = Product::active()
+            ->where('category_id', $category->id)
+            ->with('category');
 
         $query = match ($request->get('sort', 'newest')) {
             'price_asc'  => $query->orderBy('price'),
@@ -58,7 +66,7 @@ class ProductController extends Controller
         };
 
         $products   = $query->paginate(12)->withQueryString();
-        $categories = Category::where('is_active', true)->get();
+        $categories = Category::where('is_active', true)->orderBy('name')->get();
 
         return view('products.index', compact('products', 'categories', 'category'));
     }

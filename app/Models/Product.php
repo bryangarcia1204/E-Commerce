@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'category_id', 'name', 'slug', 'description', 'price',
@@ -18,10 +20,12 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-        'discount_price' => 'decimal:2',
-        'is_active' => 'boolean',
-        'is_featured' => 'boolean',
+        'price'           => 'decimal:2',
+        'discount_price'  => 'decimal:2',
+        'stock'           => 'integer',
+        'is_active'       => 'boolean',
+        'is_featured'     => 'boolean',
+        'deleted_at'      => 'datetime',
     ];
 
     public function category(): BelongsTo
@@ -29,32 +33,44 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Resolución de ruta por slug en lugar de por id.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    /**
+     * URL pública de la imagen principal.
+     *  - Si la imagen es una URL absoluta (semillas del seeder, CDN externo)
+     *    se devuelve tal cual.
+     *  - Si es una ruta del disco "public", se construye con Storage::url()
+     *    (funciona con el symlink public/storage).
+     *  - Si no hay imagen, se usa un placeholder local servido desde
+     *    /img/placeholder.svg para no depender de servicios externos.
+     */
     public function getImageUrlAttribute(): string
     {
         if (! $this->image) {
-            return 'https://picsum.photos/seed/prod-default/600/800';
+            return asset('img/placeholder.svg');
         }
 
         if (str_starts_with($this->image, 'http')) {
             return $this->image;
         }
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = \Illuminate\Support\Facades\Storage::disk('public');
-
-        return $disk->url($this->image);
+        return Storage::disk('public')->url($this->image);
     }
 
-    public function images(): HasMany
-    {
-        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
-    }
-
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
+    /**
+     * Precio efectivo: si hay precio de descuento, prevalece.
+     */
     public function getCurrentPriceAttribute(): float
     {
         return (float) ($this->discount_price ?? $this->price);
@@ -62,10 +78,19 @@ class Product extends Model
 
     public function getDiscountPercentAttribute(): ?int
     {
-        if (!$this->discount_price || $this->price <= 0) {
+        if (! $this->discount_price || $this->price <= 0) {
             return null;
         }
+
         return (int) round((1 - $this->discount_price / $this->price) * 100);
+    }
+
+    /**
+     * ¿Quedan unidades vendibles?
+     */
+    public function isInStock(int $qty = 1): bool
+    {
+        return $this->stock >= $qty;
     }
 
     public function scopeActive(Builder $query): Builder
@@ -76,5 +101,10 @@ class Product extends Model
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
+    }
+
+    public function scopeOnSale(Builder $query): Builder
+    {
+        return $query->whereNotNull('discount_price');
     }
 }

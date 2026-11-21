@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="@yield('description', 'MODA: tienda online de moda. Envío gratis desde 50 € y devoluciones en 30 días.')">
+    <link rel="canonical" href="{{ url()->current() }}">
     <title>@yield('title', 'MODA — Tienda online')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -79,7 +81,19 @@
                class="whitespace-nowrap hover:text-ink transition {{ request()->routeIs('products.index') && !request('category') ? 'text-ink font-bold' : 'font-medium' }}">
                 Todo
             </a>
-            @foreach(\App\Models\Category::where('is_active', true)->take(10)->get() as $navCat)
+            {{-- Categorías del menú.
+                Consulta directa (10 filas, índice en is_active): barata y
+                predecible. Se quitó Cache::remember porque el driver
+                'database' no siempre reconstruye bien Collections de modelos
+                Eloquent al deserializar y devolvía un string, rompiendo el
+                foreach con "Attempt to read property 'name' on string". --}}
+            @php
+                $navCategories = \App\Models\Category::where('is_active', true)
+                    ->orderBy('name')
+                    ->take(10)
+                    ->get();
+            @endphp
+            @foreach($navCategories as $navCat)
                 <a href="{{ route('categories.show', $navCat) }}"
                    class="whitespace-nowrap hover:text-ink transition {{ request()->routeIs('categories.show') && request()->route('category')?->id === $navCat->id ? 'text-ink font-bold' : 'font-medium' }}">
                     {{ $navCat->name }}

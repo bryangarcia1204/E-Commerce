@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -24,7 +23,7 @@ class ProductSeeder extends Seeder
             'Bufanda de lana', 'Guantes de piel', 'Calcetines pack',
         ];
 
-        $categories = Category::all();
+        $categories = \App\Models\Category::all();
 
         foreach ($names as $i => $name) {
             $price = rand(1500, 8999) / 100; // 15.00 - 89.99
@@ -32,16 +31,18 @@ class ProductSeeder extends Seeder
             $discountPrice = $hasDiscount ? round($price * (rand(60, 85) / 100), 2) : null;
 
             Product::create([
-                'category_id' => $categories->random()->id,
-                'name' => $name,
-                'slug' => Str::slug($name) . '-' . ($i + 1),
-                'description' => "Descripción de {$name}. Material de alta calidad, cómodo y moderno. Ideal para el día a día.",
-                'price' => $price,
+                'category_id'    => $categories->random()->id,
+                'name'           => $name,
+                'slug'           => Str::slug($name) . '-' . ($i + 1),
+                'description'    => "Descripción de {$name}. Material de alta calidad, cómodo y moderno. Ideal para el día a día.",
+                'price'          => $price,
                 'discount_price' => $discountPrice,
-                'stock' => rand(5, 100),
-                'image' => 'https://picsum.photos/seed/prod-' . ($i + 1) . '/600/800',
-                'is_active' => true,
-                'is_featured' => $i < 8,
+                'stock'          => rand(5, 100),
+                // NULL = sin imagen; la vista usará el placeholder local
+                // (public/img/placeholder.svg) en lugar de depender de picsum.
+                'image'          => null,
+                'is_active'      => true,
+                'is_featured'    => $i < 8,
             ]);
         }
     }

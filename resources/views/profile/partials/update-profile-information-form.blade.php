@@ -47,6 +47,32 @@
             @endif
         </div>
 
+        {{-- Datos de cliente para acelerar el checkout --}}
+        <div>
+            <x-input-label for="phone" :value="__('Teléfono')" />
+            <x-text-input id="phone" name="phone" type="tel" class="mt-1 block w-full" :value="old('phone', $user->phone)" autocomplete="tel" />
+            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+        </div>
+
+        <div>
+            <x-input-label for="default_shipping_address" :value="__('Dirección de envío preferida')" />
+            <textarea id="default_shipping_address" name="default_shipping_address" rows="2"
+                      class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                      autocomplete="street-address">{{ old('default_shipping_address', $user->default_shipping_address) }}</textarea>
+            <x-input-error class="mt-2" :messages="$errors->get('default_shipping_address')" />
+        </div>
+
+        <div>
+            <x-input-label for="preferred_payment_method" :value="__('Método de pago preferido')" />
+            <select id="preferred_payment_method" name="preferred_payment_method"
+                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                @foreach (\App\Models\User::PAYMENTS as $slug => $label)
+                    <option value="{{ $slug }}" @selected(old('preferred_payment_method', $user->preferred_payment_method) === $slug)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('preferred_payment_method')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

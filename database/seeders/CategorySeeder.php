@@ -17,9 +17,10 @@ class CategorySeeder extends Seeder
 
         foreach ($categories as $name) {
             Category::create([
-                'name' => $name,
-                'slug' => Str::slug($name),
-                'image' => 'https://picsum.photos/seed/cat-' . Str::slug($name) . '/400/400',
+                'name'      => $name,
+                'slug'      => Str::slug($name),
+                // NULL = sin imagen: se muestra el placeholder local.
+                'image'     => null,
                 'is_active' => true,
             ]);
         }

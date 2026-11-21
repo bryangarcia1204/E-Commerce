@@ -36,7 +36,7 @@
                     <tr class="border-t border-gray-100 hover:bg-gray-50">
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-3">
-                                <img src="{{ $product->image }}" class="w-10 h-12 object-cover rounded" alt="">
+                                <img src="{{ $product->image_url }}" class="w-10 h-12 object-cover rounded bg-gray-100" alt="">
                                 <span class="font-medium">{{ $product->name }}</span>
                             </div>
                         </td>

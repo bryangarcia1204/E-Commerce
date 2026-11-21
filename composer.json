@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "moda/ecommerce",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "MODA - tienda online de moda construida con Laravel + Breeze + Tailwind.",
+    "keywords": ["laravel", "ecommerce", "moda", "tailwind"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
@@ -38,10 +38,26 @@
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
+            "@php artisan key:generate --ansi",
+            "@php artisan storage:link --ansi",
+            "@php artisan migrate --force --ansi",
             "npm install --ignore-scripts",
             "npm run build"
+        ],
+        "seed-demo": [
+            "@php artisan migrate:fresh --seed --ansi",
+            "@php artisan storage:link --ansi"
+        ],
+        "deploy": [
+            "@composer install --no-dev --optimize-autoloader",
+            "npm ci --ignore-scripts",
+            "npm run build",
+            "@php artisan migrate --force --ansi",
+            "@php artisan storage:link --ansi",
+            "@php artisan config:cache --ansi",
+            "@php artisan route:cache --ansi",
+            "@php artisan view:cache --ansi",
+            "@php artisan event:cache --ansi"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -65,6 +81,10 @@
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
+        ],
+        "post-install-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan storage:link --ansi || true"
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"

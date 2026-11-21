@@ -18,7 +18,10 @@ use Illuminate\Http\Request;
  */
 class SettlementController extends Controller
 {
-    public function __construct(private SettlementService $settlements) {}
+    public function __construct(
+        private SettlementService $settlements,
+        private \App\Services\CacheService $cache,
+    ) {}
 
     public function index(Request $request)
     {
@@ -61,6 +64,9 @@ class SettlementController extends Controller
             $settlement->order,
             $request->input('external_ref')
         );
+
+        // Liquidar una comisión cambia los agregados pendientes del dashboard.
+        $this->cache->bumpVersion('dashboard');
 
         return back()->with('success', 'Comisión marcada como liquidada.');
     }

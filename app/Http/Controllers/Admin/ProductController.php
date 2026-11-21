@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    public function __construct(private CacheService $cache) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Product::class);
@@ -45,6 +48,9 @@ class ProductController extends Controller
 
         Product::create($data);
 
+        // Invalida caché de catálogo + home (productos destacados/novedades).
+        $this->cache->bumpVersions(['catalog', 'home']);
+
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Producto creado correctamente.');
@@ -76,6 +82,9 @@ class ProductController extends Controller
 
         $product->update($data);
 
+        // Invalida caché de catálogo (detalle + listados) y home.
+        $this->cache->bumpVersions(['catalog', 'home']);
+
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Producto actualizado correctamente.');
@@ -90,6 +99,9 @@ class ProductController extends Controller
         }
 
         $product->delete();
+
+        // Invalida caché de catálogo + home (el producto ya no se muestra).
+        $this->cache->bumpVersions(['catalog', 'home']);
 
         return redirect()
             ->route('admin.products.index')

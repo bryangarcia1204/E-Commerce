@@ -37,7 +37,7 @@
         <h2 class="text-xl font-bold text-gray-900">5. Derechos de los interesados</h2>
         <p>Puedes ejercer en cualquier momento tus derechos de acceso, rectificación, supresión (derecho al olvido), limitación, portabilidad y oposición:</p>
         <ul class="list-disc pl-5 space-y-1">
-            <li><strong>Supresión de cuenta (derecho al olvido):</strong> desde tu <a href="{{ route('profile.edit') }}" class="text-brand underline">perfil</a> puedes borrar tu cuenta. Se eliminan en cascada: métodos de pago, billetera, sesiones, tokens de API, mensajes de contacto. Los pedidos se anonimizan.</li>
+            <li><strong>Supresión de cuenta (derecho al olvido):</strong> desde tu <a href="{{ route('account.profile.edit') }}" class="text-brand underline">perfil</a> puedes borrar tu cuenta. Se eliminan en cascada: métodos de pago, billetera, sesiones, tokens de API, mensajes de contacto. Los pedidos se anonimizan.</li>
             <li><strong>Resto de derechos:</strong> escríbenos a <a href="mailto:dpo@moda.local" class="text-brand underline">dpo@moda.local</a>.</li>
         </ul>
         <p>También puedes reclamar ante la Agencia Española de Protección de Datos (AEPD, <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="text-brand underline">www.aepd.es</a>) si consideras que tus derechos no se han atendido.</p>

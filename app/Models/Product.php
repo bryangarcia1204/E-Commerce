@@ -99,27 +99,16 @@ class Product extends Model
      */
     public function getAffiliateUrlAttribute(): string
     {
-        if (! $this->external_url) {
-            return route('products.show', $this);
-        }
+        $base = $this->external_url;
+        $tag  = $this->affiliate_tag;
+        $sub  = request()->attributes->get('affiliate_sub_id', ''); // lo inyecta el controlador
 
-        if (! $this->affiliate_tag) {
-            return $this->external_url;
-        }
-
-        $sep = str_contains($this->external_url, '?') ? '&' : '?';
-
-        // Cada tienda usa su propio parámetro de afiliado; mapeamos los
-        // conocidos y, por defecto, usamos ?affid=. Esto evita hardcodear
-        // el parámetro de una sola plataforma.
-        $param = match ($this->external_store) {
-            'amazon'      => 'tag',
-            'aliexpress'  => 'aff_fcid',
-            'shein'       => 'url_from',
-            default       => 'affid',
+        return match ($this->external_store) {
+            'Amazon'     => $base . '?tag=' . $tag . '&ascsubtag=' . $sub,
+            'AliExpress' => $base . '?aff_fcid=' . $tag . '&aff_platform=api-new-link-generate&sub_id=' . $sub,
+            'Shein'      => $base . '?url_from=' . $tag . '&sub_id=' . $sub,
+            default      => $base . '?affid=' . $tag . '&sub_id=' . $sub,
         };
-
-        return $this->external_url.$sep.http_build_query([$param => $this->affiliate_tag]);
     }
 
     /**

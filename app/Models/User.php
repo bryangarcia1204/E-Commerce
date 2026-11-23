@@ -11,6 +11,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
+use \App\Models\WalletEntry;
+use \App\Services\WalletService;
+
+
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -84,9 +88,42 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Order::class);
     }
 
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
     public function paymentMethods(): HasMany
     {
         return $this->hasMany(PaymentMethod::class);
+    }
+
+    /** Saldo de la billetera en euros. */
+    public function getWalletBalanceAttribute(): float
+    {
+        return app(WalletService::class)->balance($this) / 100;
+    }
+
+
+    public function applyWalletMovement(
+        string $direction,
+        string $type,
+        float $amount,
+        string $description,
+        ?\Illuminate\Database\Eloquent\Model $source = null,
+        ?string $idempotencyKey = null,
+        array $meta = []
+    ): WalletEntry {
+        return app(WalletService::class)->applyMovement(
+            $this,
+            $direction,
+            $type,
+            $amount,
+            $description,
+            $source,
+            $idempotencyKey,
+            $meta
+        );
     }
 
     public function walletTransactions(): HasMany
@@ -204,54 +241,5 @@ class User extends Authenticatable implements MustVerifyEmail
     public function canAffordWithWallet(float $amount): bool
     {
         return (float) $this->wallet_balance >= $amount;
-    }
-
-    /**
-     * Acredita un movimiento en la billetera dentro de una transacción
-     * DB y registra la fila en el ledger. Devuelve el nuevo saldo.
-     * Lanza excepción si el débito deja saldo negativo.
-     */
-    public function applyWalletMovement(
-        string $direction, // credit | debit
-        string $type,      // promo_credit | cashback | refund | purchase | adjustment
-        float $amount,
-        ?string $description = null,
-        ?object $source = null,
-    ): float {
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('El importe debe ser positivo.');
-        }
-
-        return DB::transaction(function () use ($direction, $type, $amount, $description, $source) {
-            // Lock pesimista para evitar race condition en el saldo.
-            $fresh = self::lockForUpdate()->find($this->id);
-            $current = (float) $fresh->wallet_balance;
-
-            if ($direction === 'debit' && $current < $amount) {
-                throw new \RuntimeException('Saldo insuficiente en la billetera.');
-            }
-
-            $newBalance = $direction === 'credit'
-                ? $current + $amount
-                : $current - $amount;
-
-            $fresh->wallet_balance = $newBalance;
-            $fresh->save();
-
-            $fresh->walletTransactions()->create([
-                'direction' => $direction,
-                'type' => $type,
-                'amount' => $amount,
-                'balance_after' => $newBalance,
-                'description' => $description,
-                'source_type' => $source ? get_class($source) : null,
-                'source_id' => $source?->id,
-            ]);
-
-            // Refrescamos la instancia en memoria para reflejar el nuevo saldo.
-            $this->wallet_balance = $newBalance;
-
-            return $newBalance;
-        });
     }
 }

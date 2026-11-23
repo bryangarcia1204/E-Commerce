@@ -23,6 +23,10 @@
                class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.products.*') ? 'bg-white/10 text-white' : '' }}">
                 Productos
             </a>
+            <a href="{{ route('admin.wallets.index') }}"
+                class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.wallets.*') ? 'bg-white/10 text-white' : '' }}">
+                Billeteras
+            </a>
             <a href="{{ route('admin.orders.index') }}"
                class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.orders.*') ? 'bg-white/10 text-white' : '' }}">
                 Pedidos
@@ -30,6 +34,14 @@
             <a href="{{ route('admin.settlements.index') }}"
                class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.settlements.*') ? 'bg-white/10 text-white' : '' }}">
                 Liquidaciones
+            </a>
+            <a href="{{ route('admin.affiliate.index') }}"
+            class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.affiliate.index') ? 'bg-white/10 text-white' : '' }}">
+                Afiliación
+            </a>
+            <a href="{{ route('admin.affiliate.reconciliation') }}"
+            class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.affiliate.reconciliation') ? 'bg-white/10 text-white' : '' }}">
+                Conciliación
             </a>
         </nav>
 

@@ -54,8 +54,8 @@
                         </a>
                     @endif
 
-                    <a href="{{ route('dashboard') }}"
-                       class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-gray-100 text-sm font-medium">
+                    <a href="{{ route('account.dashboard') }}"
+                        class="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-full hover:bg-gray-100 text-sm font-medium">
                         <x-icon name="user" class="w-4 h-4"/> {{ auth()->user()->name }}
                     </a>
 

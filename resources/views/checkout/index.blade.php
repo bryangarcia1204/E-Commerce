@@ -48,41 +48,38 @@
             </div>
 
             {{-- Método de pago --}}
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <p class="font-semibold text-gray-900 mb-3">💳 Método de pago</p>
+            @php
+                $__wallet = app(\App\Services\WalletService::class)->balance(auth()->user());
+                $__walletFmt = number_format($__wallet / 100, 2, ',', '.');
+            @endphp
 
-                <div class="space-y-2 text-sm">
-                    @if($savedMethods->isNotEmpty())
-                        <p class="text-xs text-gray-500 mb-2">Tus métodos guardados:</p>
-                        <ul class="space-y-1 mb-3">
-                            @foreach($savedMethods as $pm)
-                                <li class="flex items-center justify-between text-xs">
-                                    <span>{{ $pm->label }}@if($pm->is_default) (predeterminado)@endif</span>
-                                    @if($pm->is_expired)
-                                        <span class="text-red-600">caducada</span>
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-                        <hr class="my-3 border-gray-200">
-                    @endif
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3 text-sm">
+                <p class="font-semibold text-gray-900">Método de pago</p>
 
-                    @foreach(\App\Models\User::PAYMENTS as $slug => $label)
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="payment_method" value="{{ $slug }}"
-                                   @checked($defaults['payment_method'] === $slug) class="mr-1" required>
-                            <span>{{ $label }}
-                                @if($slug === 'wallet')
-                                    — Saldo: {{ number_format((float) $user->wallet_balance, 2, ',', '.') }} €
-                                @endif
-                            </span>
-                        </label>
-                    @endforeach
-                </div>
-                @error('payment_method') <p class="text-red-500 text-xs mt-2">{{ $message }}</p> @enderror
-                <p class="text-xs text-gray-500 mt-3">Esta es una demo de pre-producción: no se procesan pagos reales. Los productos de tiendas asociadas se pagan en la tienda original.</p>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="radio" name="payment_method" value="wallet" required
+                        @checked(old('payment_method') === 'wallet')
+                        {{ $__wallet < $total * 100 ? 'disabled' : '' }}>
+                    <span>
+                        <span class="font-medium">Billetera MODA</span>
+                        <span class="text-gray-500">— Saldo: {{ $__walletFmt }} €</span>
+                        @if($__wallet < $total * 100)
+                            <span class="text-red-500 text-xs block">Saldo insuficiente</span>
+                        @endif
+                    </span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="radio" name="payment_method" value="external" required
+                        @checked(old('payment_method', 'external') === 'external')>
+                    <span>
+                        <span class="font-medium">Pago externo (demo)</span>
+                        <span class="text-gray-500">— El pedido queda pendiente de pago</span>
+                    </span>
+                </label>
+
+                @error('payment_method') <p class="text-red-500 text-xs">{{ $message }}</p> @enderror
             </div>
-        </div>
 
         {{-- Resumen --}}
         <aside class="md:col-span-1">
@@ -127,3 +124,5 @@
     </form>
 </div>
 @endsection
+
+

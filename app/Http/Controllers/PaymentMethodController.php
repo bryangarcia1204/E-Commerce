@@ -6,7 +6,6 @@ use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -38,9 +37,6 @@ class PaymentMethodController extends Controller
 
         if ($type === PaymentMethod::TYPE_CARD) {
             $rules['provider'] = ['required', 'string', 'in:visa,mastercard,amex,maestro'];
-            // Pedimos los últimos 4 directamente: en pre-producción no
-            // tecleamos PANs reales en formularios. En producción, la
-            // pasarela devolvería last4 + token tras tokenizar en su iframe.
             $rules['last4'] = ['required', 'string', 'digits:4'];
             $rules['expires_at'] = ['required', 'string', 'regex:/^(0[1-9]|1[0-2])\/\d{2}$/'];
         } elseif ($type === PaymentMethod::TYPE_PAYPAL) {

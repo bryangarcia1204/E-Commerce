@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'affiliate' => [
+        'amazon_webhook_secret'     => env('AFFILIATE_AMAZON_WEBHOOK_SECRET'),
+        'aliexpress_webhook_secret' => env('AFFILIATE_ALIEXPRESS_WEBHOOK_SECRET'),
+        'shein_webhook_secret'      => env('AFFILIATE_SHEIN_WEBHOOK_SECRET'),
+    ],
+
 ];

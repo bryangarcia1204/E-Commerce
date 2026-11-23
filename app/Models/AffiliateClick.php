@@ -2,28 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * Registro de un clic saliente hacia una tienda externa (dropshipping).
- * Sirve para auditoría de comisiones de afiliación y detección de fraude.
- * Se crea desde AffiliateRedirectController justo antes del redirect 302.
- */
 class AffiliateClick extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-        'user_id', 'product_id', 'external_store', 'redirect_url',
-        'sale_price', 'estimated_commission', 'ip_address', 'user_agent',
-        'session_id',
+        'user_id', 'product_id', 'ip_address', 'user_agent',
+        'referer', 'session_id', 'sub_id', 'network',
+        'commission_amount', 'status', 'converted_at', 'paid_at',
+        'external_order_id', 'webhook_payload',
     ];
 
     protected $casts = [
-        'sale_price' => 'decimal:2',
-        'estimated_commission' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'converted_at'      => 'datetime',
+        'paid_at'           => 'datetime',
+        'webhook_payload'   => 'array',
     ];
 
     public function user(): BelongsTo
@@ -34,5 +30,29 @@ class AffiliateClick extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function scopeBetweenDates(Builder $query, ?string $from, ?string $to): Builder
+    {
+        $column = $query->getModel()->getTable() . '.created_at';
+
+        return $query
+            ->when($from, fn ($q) => $q->where($column, '>=', $from . ' 00:00:00'))
+            ->when($to,   fn ($q) => $q->where($column, '<=', $to   . ' 23:59:59'));
+    }
+
+    public function scopePending(Builder $q): Builder
+    {
+        return $q->where('status', 'pending');
+    }
+
+    public function scopeConverted(Builder $q): Builder
+    {
+        return $q->where('status', 'converted');
+    }
+
+    public function scopePaid(Builder $q): Builder
+    {
+        return $q->where('status', 'paid');
     }
 }

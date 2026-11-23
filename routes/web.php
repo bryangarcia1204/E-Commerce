@@ -4,6 +4,10 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SettlementController as AdminSettlementController;
+use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
+use App\Http\Controllers\Account\DashboardController as AccountDashboard;
+use App\Http\Controllers\Account\OrderController as AccountOrderController;
+use App\Http\Controllers\Admin\WalletController as AdminWalletController;
 use App\Http\Controllers\AffiliateRedirectController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -13,9 +17,13 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Account\WalletController;
 use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AffiliateWebhookController;
+
+Route::post('/webhooks/affiliate/{network}', [AffiliateWebhookController::class, 'handle'])
+    ->name('affiliate.webhook');
 
 /*
 |--------------------------------------------------------------------------
@@ -112,15 +120,11 @@ Route::middleware('auth')->name('wishlist.')->group(function () {
 | Breeze: dashboard de usuario y perfil
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', fn () => view('dashboard'))
-    ->middleware(['auth', 'verified'])
+Route::redirect('/dashboard', '/cuenta')
+    ->middleware(['auth'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
     // Métodos de pago guardados. La autorización por usuario la hace
     // PaymentMethodPolicy en setDefault/destroy (anti IDOR).
     Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment-methods.store');
@@ -133,6 +137,7 @@ Route::middleware('auth')->group(function () {
 | Panel de administración (auth + admin)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminDashboard::class, 'index'])->name('dashboard');
 
@@ -147,6 +152,31 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Libro de liquidaciones dropshipping (flujo de caja pendiente).
     Route::get('/settlements', [AdminSettlementController::class, 'index'])->name('settlements.index');
     Route::post('/settlements/{settlement}/settle', [AdminSettlementController::class, 'settle'])->name('settlements.settle');
+
+    // Admin · Afiliación
+    Route::get('/afiliacion', [AdminAffiliateController::class, 'index'])->name('affiliate.index');
+    Route::get('/afiliacion/export', [AdminAffiliateController::class, 'export'])->name('affiliate.export');
+    Route::delete('/afiliacion/{id}', [AdminAffiliateController::class, 'destroy'])->name('affiliate.destroy');
+
+    Route::get('/afiliacion/conciliacion', [AdminAffiliateController::class, 'reconciliation'])->name('affiliate.reconciliation');
+    Route::patch('/afiliacion/{click}/marcar-pagado', [AdminAffiliateController::class, 'markAsPaid'])->name('affiliate.markPaid');
+    Route::patch('/afiliacion/{click}/rechazar', [AdminAffiliateController::class, 'reject'])->name('affiliate.reject');
+
+    Route::get('/billeteras', [AdminWalletController::class, 'index'])->name('wallets.index');
+    Route::get('/billeteras/{wallet}', [AdminWalletController::class, 'show'])->name('wallets.show');
+    Route::post('/billeteras/{wallet}/ajuste', [AdminWalletController::class, 'adjust'])->name('wallets.adjust');
 });
+
+// Área del cliente
+Route::middleware('auth')->prefix('cuenta')->name('account.')->group(function () {
+    Route::get('/', [AccountDashboard::class, 'index'])->name('dashboard');
+    Route::get('/pedidos', [AccountOrderController::class, 'index'])->name('orders.index');
+    Route::get('/pedidos/{order}', [AccountOrderController::class, 'show'])->name('orders.show');
+    Route::get('/perfil', [AccountDashboard::class, 'editProfile'])->name('profile.edit');
+    Route::patch('/perfil', [AccountDashboard::class, 'updateProfile'])->name('profile.update');
+    Route::patch('/perfil/password', [AccountDashboard::class, 'updatePassword'])->name('password.update');
+    Route::delete('/perfil', [AccountDashboard::class, 'destroyAccount'])->middleware('auth')->name('profile.destroy');
+    Route::get('/billetera', [WalletController::class, 'index'])->name('wallet.index');
+    });
 
 require __DIR__.'/auth.php';

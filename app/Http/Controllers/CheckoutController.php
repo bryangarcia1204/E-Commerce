@@ -13,6 +13,7 @@ use App\Services\SettlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\WalletService;
 
 class CheckoutController extends Controller
 {
@@ -88,8 +89,7 @@ class CheckoutController extends Controller
             'saved_payment_method_id' => ['nullable', 'integer', 'exists:payment_methods,id'],
         ]);
 
-        // El saved_payment_method_id debe pertenecer al usuario (anti IDOR):
-        // la policy lo cubre, pero validamos aquí para fallar rápido.
+        // El saved_payment_method_id debe pertenecer al usuario (anti IDOR).
         $savedPm = null;
         if (! empty($data['saved_payment_method_id'])) {
             $savedPm = $user->paymentMethods()->find($data['saved_payment_method_id']);
@@ -98,8 +98,6 @@ class CheckoutController extends Controller
             }
         }
 
-        // Sincronizamos antes de calcular totales para que el pedido refleje
-        // precios y stock actuales, no los del momento en que se añadió al carrito.
         $this->cart->sync();
 
         if ($this->cart->isEmpty()) {
@@ -111,53 +109,50 @@ class CheckoutController extends Controller
         $shipping = $this->cart->shipping();
         $total    = $this->cart->total();
 
-        // Cargamos los productos para saber cuáles son dropshipping.
         $productIds = array_column($items, 'id');
         $products   = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
-        // Importe que cobramos nosotros = subtotal de productos PROPIOS
-        // (no dropshipping). Los dropshipping se pagan en la tienda externa.
-        $ownSubtotal = 0.0;
-        $marginTotal = 0.0;
+        // Separar productos propios vs dropshipping.
+        $ownSubtotal     = 0.0;
+        $marginTotal     = 0.0;
         $commissionTotal = 0.0;
-        $payableSupplier = 0.0; // lo que debemos al proveedor de productos propios
+        $payableSupplier = 0.0;
+
         foreach ($items as $item) {
             $p = $products->get($item['id']);
+
             if ($p && $p->is_dropshipping) {
-                // Margen + comisión que ganamos al canalizar la venta.
-                $marginTotal += $p->unit_profit * $item['quantity'];
+                $marginTotal     += $p->unit_profit * $item['quantity'];
                 $commissionTotal += $p->unit_commission * $item['quantity'];
-            } else {
-                $ownSubtotal += $item['price'] * $item['quantity'];
-                // Los productos propios también pueden tener comisión si son
-                // de afiliación sin dropshipping; por defecto 0.
-                if ($p) {
-                    $commissionTotal += $p->unit_commission * $item['quantity'];
-                    // Si el producto propio se adquiere a un proveedor (cost_price),
-                    // registramos la deuda con él.
-                    if ($p->cost_price !== null) {
-                        $payableSupplier += (float) $p->cost_price * $item['quantity'];
-                    }
+                continue;
+            }
+
+            $ownSubtotal += $item['price'] * $item['quantity'];
+
+            if ($p) {
+                $commissionTotal += $p->unit_commission * $item['quantity'];
+                if ($p->cost_price !== null) {
+                    $payableSupplier += (float) $p->cost_price * $item['quantity'];
                 }
             }
         }
 
-        // Si paga con billetera: debe tener saldo para cubrir la parte que
-        // cobramos nosotros (ownSubtotal + envío). La parte dropshipping no
-        // se debita (se paga en la tienda externa).
-        $chargeable = $ownSubtotal + $shipping;
-        if ($data['payment_method'] === User::PAYMENT_WALLET) {
-            if (! $user->canAffordWithWallet($chargeable)) {
-                return back()
-                    ->with('error', 'Saldo insuficiente en tu billetera para este pedido. Faltan '.number_format($chargeable - (float) $user->wallet_balance, 2, ',', '.').' €.')
-                    ->withInput();
-            }
+        // Lo que cobramos nosotros: productos propios + envío.
+        // (Dropshipping lo paga el usuario en la tienda externa.)
+        $chargeable = round($ownSubtotal + $shipping, 2);
+
+        // Check rápido de saldo. El débito real se hará dentro de la transacción.
+        if ($data['payment_method'] === User::PAYMENT_WALLET && ! $user->canAffordWithWallet($chargeable)) {
+            $faltan = max(0, $chargeable - $user->wallet_balance);
+            return back()
+                ->with('error', 'Saldo insuficiente en tu billetera. Faltan '.number_format($faltan, 2, ',', '.').' €.')
+                ->withInput();
         }
 
         $paymentStatus = match ($data['payment_method']) {
-            User::PAYMENT_WALLET => Order::PAYMENT_PAID,    // se debita ahora
-            User::PAYMENT_COD => Order::PAYMENT_PENDING,    // paga al recibir
-            default => Order::PAYMENT_PENDING,              // tarjeta/PayPal: pasarela externa
+            User::PAYMENT_WALLET => Order::PAYMENT_PAID,
+            User::PAYMENT_COD    => Order::PAYMENT_PENDING,
+            default              => Order::PAYMENT_PENDING,
         };
 
         try {
@@ -187,9 +182,6 @@ class CheckoutController extends Controller
                     $p = $products->get($item['id']);
 
                     if ($p && $p->is_dropshipping) {
-                        // Dropshipping: NO tocamos stock local (lo gestiona la
-                        // tienda externa). El item queda registrado para que el
-                        // usuario lo complete en la tienda vía botón de afiliado.
                         $order->items()->create([
                             'product_id'   => $item['id'],
                             'product_name' => $item['name'],
@@ -200,7 +192,6 @@ class CheckoutController extends Controller
                         continue;
                     }
 
-                    // Producto propio: decremento atómico de stock anti-concurrencia.
                     $updated = Product::where('id', $item['id'])
                         ->where('stock', '>=', $item['quantity'])
                         ->decrement('stock', $item['quantity']);
@@ -224,7 +215,8 @@ class CheckoutController extends Controller
                     ]);
                 }
 
-                // Pago con billetera: debitamos ahora la parte cobrable.
+                // Débito de billetera: ÚNICO punto, DENTRO de la transacción,
+                // por $chargeable (no $total). Si algo falla arriba, se revierte.
                 if ($data['payment_method'] === User::PAYMENT_WALLET && $chargeable > 0) {
                     $user->applyWalletMovement(
                         direction: 'debit',
@@ -232,41 +224,34 @@ class CheckoutController extends Controller
                         amount: $chargeable,
                         description: 'Pedido #'.$order->number,
                         source: $order,
+                        idempotencyKey: 'order-'.$order->number.'-payment',
+                        meta: ['order_id' => $order->id],
                     );
                 }
 
-                // Asientos del libro de cuentas pendientes (liquidaciones
-                // dropshipping): por cobrar del cliente, comisión por cobrar
-                // de la tienda, por pagar al proveedor. Atómico con el pedido.
                 $this->settlements->createForOrder($order, [
-                    'chargeable' => $chargeable,
+                    'chargeable'       => $chargeable,
                     'commission_total' => $commissionTotal,
                     'payable_supplier' => $payableSupplier,
-                    'wallet_paid' => $data['payment_method'] === User::PAYMENT_WALLET,
+                    'wallet_paid'      => $data['payment_method'] === User::PAYMENT_WALLET,
                 ]);
 
                 return $order;
             });
         } catch (\RuntimeException $e) {
-            Log::warning('Checkout rechazado por stock: '.$e->getMessage());
+            Log::warning('Checkout rechazado: '.$e->getMessage());
             return back()->with('error', $e->getMessage())->withInput();
         }
 
-        // El pedido generó pedidos/asientos: invalida agregados del dashboard.
         $this->cache->bumpVersion('dashboard');
-
-        // Vaciamos el carrito sólo tras confirmar la transacción.
         $this->cart->clear();
 
-        // Persistimos los datos de envío en el perfil del usuario si no los
-        // tenía, para acelerar la próxima compra (sólo si vienen informados).
         if (! empty($data['shipping_address']) && $user->default_shipping_address !== $data['shipping_address']) {
             $user->default_shipping_address = $data['shipping_address'];
             $user->phone = $user->phone ?: ($data['customer_phone'] ?? null);
             $user->save();
         }
 
-        // Email de confirmación (en cola para no ralentizar el redirect).
         try {
             $user->notify(new OrderConfirmation($order));
         } catch (\Throwable $e) {
@@ -274,7 +259,7 @@ class CheckoutController extends Controller
         }
 
         return redirect()->route('checkout.success', $order)
-                         ->with('success', '¡Pedido registrado! Te hemos enviado un email con el resumen.');
+                        ->with('success', '¡Pedido registrado! Te hemos enviado un email con el resumen.');
     }
 
     public function success(Request $request, Order $order)

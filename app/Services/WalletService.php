@@ -116,7 +116,7 @@ class WalletService
         string $type,               // 'purchase', 'refund', 'promo', 'adjustment', ...
         float $amountEuros,
         string $description,
-        Model $source = null,
+        Model $source,
         ?string $idempotencyKey = null,
         array $meta = []
     ): WalletEntry {

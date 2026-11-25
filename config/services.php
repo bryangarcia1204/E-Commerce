@@ -35,6 +35,10 @@ return [
         ],
     ],
 
+    'ads' => [
+        'enabled' => env('ADS_ENABLED', false),
+    ],
+
     'affiliate' => [
         'amazon_webhook_secret'     => env('AFFILIATE_AMAZON_WEBHOOK_SECRET'),
         'aliexpress_webhook_secret' => env('AFFILIATE_ALIEXPRESS_WEBHOOK_SECRET'),

@@ -152,7 +152,7 @@
 @endif
 
 <main>@yield('content')</main>
-
+<x-ad-slot position="footer-bar" />
 {{-- Footer --}}
 <footer class="bg-ink text-gray-400 mt-20">
     <div class="max-w-7xl mx-auto px-4 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">

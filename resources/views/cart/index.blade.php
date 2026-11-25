@@ -6,6 +6,8 @@
 <div class="max-w-7xl mx-auto px-4 py-10">
     <h1 class="text-2xl md:text-3xl font-black mb-8">Tu carrito</h1>
 
+    <x-ad-slot position="cart-top" />
+
     @if(empty($items))
         <div class="text-center py-20">
             <p class="text-4xl mb-3">🛒</p>

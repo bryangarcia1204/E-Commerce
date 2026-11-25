@@ -51,30 +51,109 @@
             @php
                 $__wallet = app(\App\Services\WalletService::class)->balance(auth()->user());
                 $__walletFmt = number_format($__wallet / 100, 2, ',', '.');
+                $__chargeFmt = number_format($chargeable, 2, ',', '.');
+                $__cardMethods = $savedMethods->where('type', 'card');
             @endphp
 
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3 text-sm">
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3 text-sm" x-data="{ method: '{{ old('payment_method', 'card') }}', useSaved: {{ $savedMethods->where('type', 'card')->isNotEmpty() ? 'true' : 'false' }} }">
                 <p class="font-semibold text-gray-900">Método de pago</p>
+                @if($chargeable > 0)
+                    <p class="text-xs text-gray-500 -mt-1">
+                        Se cobra <strong>{{ $__chargeFmt }} €</strong> (productos propios + envío).
+                        @if($hasDropshipping) Los productos de tiendas asociadas se pagan en su tienda original. @endif
+                    </p>
+                @endif
 
-                <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="radio" name="payment_method" value="wallet" required
-                        @checked(old('payment_method') === 'wallet')
-                        {{ $__wallet < $total * 100 ? 'disabled' : '' }}>
+                {{-- Tarjeta: Stripe real o sandbox --}}
+                <label class="flex items-center gap-3 cursor-pointer border rounded-lg p-3 bg-white" :class="method === 'card' ? 'border-black' : 'border-gray-200'">
+                    <input type="radio" name="payment_method" value="card" x-model="method"
+                           @checked(old('payment_method', 'card') === 'card')>
+                    <span class="font-medium">Tarjeta 💳</span>
+                    <span class="text-gray-500">— {{ $isSandbox ? 'Entorno de prueba (sin cargo real)' : 'Pago seguro con Stripe' }}</span>
+                </label>
+
+                <div x-show="method === 'card'" x-cloak class="space-y-3 pl-1 border-l-2 border-gray-200 ml-3 pt-1">
+                    {{-- Métodos guardados --}}
+                    @forelse($__cardMethods as $pm)
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="radio" name="saved_payment_method_id" value="{{ $pm->id }}"
+                                   @checked(old('saved_payment_method_id') == $pm->id)
+                                   @change="useSaved = true">
+                            <span>{{ $pm->label }} {{ $pm->is_default ? '· predeterminada' : '' }}</span>
+                        </label>
+                    @empty
+                        <p class="text-xs text-gray-500">No tienes tarjetas guardadas.</p>
+                    @endforelse
+
+                    {{-- Tarjeta nueva --}}
+                    @if($__cardMethods->isNotEmpty())
+                        <label class="flex items-center gap-3 cursor-pointer text-xs text-gray-600">
+                            <input type="radio" name="saved_payment_method_id" value="" @change="useSaved = false">
+                            <span>Usar otra tarjeta…</span>
+                        </label>
+                    @endif
+
+                    <div x-show="! useSaved" class="space-y-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Titular</label>
+                            <input type="text" name="card_holder" autocomplete="cc-name" value="{{ old('card_holder') }}" placeholder="Nombre como aparece en la tarjeta"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:border-black focus:ring-0">
+                            @error('card_holder') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Número de tarjeta</label>
+                            <input type="text" name="card_number" inputmode="numeric" autocomplete="cc-number" value="{{ old('card_number') }}" placeholder="4242 4242 4242 4242"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:border-black focus:ring-0">
+                            @error('card_number') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                            @if($isSandbox)
+                                <p class="text-[11px] text-gray-400 mt-1">Prueba: 4242 4242 4242 4242 (OK) · 4000 0000 0000 0002 (rechazada) · 4000 0000 0000 9995 (sin fondos)</p>
+                            @endif
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Caducidad</label>
+                                <div class="flex gap-2">
+                                    <input type="number" name="card_exp_month" min="1" max="12" placeholder="MM" value="{{ old('card_exp_month') }}"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:border-black focus:ring-0">
+                                    <input type="number" name="card_exp_year" min="24" max="2100" placeholder="AA" value="{{ old('card_exp_year') }}"
+                                           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:border-black focus:ring-0">
+                                </div>
+                                @error('card_exp_month') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                                @error('card_exp_year') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">CVC</label>
+                                <input type="password" inputmode="numeric" name="card_cvc" maxlength="4" placeholder="123" value="{{ old('card_cvc') }}"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:border-black focus:ring-0">
+                                @error('card_cvc') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                            <input type="checkbox" name="save_card" value="1">
+                            <span>Guardar esta tarjeta para próximas compras</span>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- Billetera --}}
+                <label class="flex items-center gap-3 cursor-pointer {{ $__wallet < $chargeable * 100 ? 'opacity-50' : '' }}">
+                    <input type="radio" name="payment_method" value="wallet" x-model="method"
+                        {{ $__wallet < $chargeable * 100 ? 'disabled' : '' }}>
                     <span>
                         <span class="font-medium">Billetera MODA</span>
                         <span class="text-gray-500">— Saldo: {{ $__walletFmt }} €</span>
-                        @if($__wallet < $total * 100)
-                            <span class="text-red-500 text-xs block">Saldo insuficiente</span>
+                        @if($__wallet < $chargeable * 100)
+                            <span class="text-red-500 text-xs block">Saldo insuficiente para {{ $__chargeFmt }} €</span>
                         @endif
                     </span>
                 </label>
 
+                {{-- Contra reembolso --}}
                 <label class="flex items-center gap-3 cursor-pointer">
-                    <input type="radio" name="payment_method" value="external" required
-                        @checked(old('payment_method', 'external') === 'external')>
+                    <input type="radio" name="payment_method" value="cod" x-model="method">
                     <span>
-                        <span class="font-medium">Pago externo (demo)</span>
-                        <span class="text-gray-500">— El pedido queda pendiente de pago</span>
+                        <span class="font-medium">Contra reembolso</span>
+                        <span class="text-gray-500">— Se paga al recibir el pedido</span>
                     </span>
                 </label>
 

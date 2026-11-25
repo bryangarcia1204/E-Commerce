@@ -3,24 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\AffiliateClick;
-use App\Services\Affiliate\Networks\AliExpressNetwork;
-use App\Services\Affiliate\Networks\AmazonNetwork;
-use App\Services\Affiliate\Networks\SheinNetwork;
+use App\Services\Affiliate\AffiliateNetworkManager;
 use App\Services\Affiliate\Contracts\AffiliateNetwork;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AffiliateWebhookController extends Controller
 {
-    /** Mapa red → clase. Registro explícito, sin auto-discovery mágica. */
-    private array $networks = [
-        'amazon'      => AmazonNetwork::class,
-        'aliexpress'  => AliExpressNetwork::class,
-        'shein'       => SheinNetwork::class,
-    ];
+    public function __construct(private AffiliateNetworkManager $networks) {}
 
     public function handle(Request $request, string $network)
     {
+        // El slug llega por la URL: se normaliza (case-insensitive) y se
+        // resuelve contra el registro central de redes.
         $handler = $this->resolveHandler($network);
 
         if (! $handler) {
@@ -29,7 +24,7 @@ class AffiliateWebhookController extends Controller
 
         if (! $handler->verify($request)) {
             Log::warning('Affiliate webhook: firma inválida', [
-                'network' => $network,
+                'network' => $handler->slug(),
                 'ip'      => $request->ip(),
             ]);
             return response()->json(['error' => 'Invalid signature'], 401);
@@ -38,7 +33,7 @@ class AffiliateWebhookController extends Controller
         $subId = $handler->extractSubId($request);
 
         if (! $subId) {
-            Log::warning('Affiliate webhook: falta sub_id', ['network' => $network]);
+            Log::warning('Affiliate webhook: falta sub_id', ['network' => $handler->slug()]);
             return response()->json(['error' => 'Missing sub_id'], 422);
         }
 
@@ -59,19 +54,30 @@ class AffiliateWebhookController extends Controller
             return response()->json(['status' => 'already_processed']);
         }
 
+        // Un clic rechazado manualmente en conciliación no se re-convierte.
+        if ($click->status === 'rejected') {
+            Log::info('Affiliate webhook: clic rechazado en conciliación, se ignora', [
+                'click_id' => $click->id,
+            ]);
+            return response()->json(['status' => 'ignored']);
+        }
+
         $commission = $handler->extractCommission($request);
 
         $click->update([
             'status'             => 'converted',
             'converted_at'       => now(),
-            'commission_amount'  => $commission,
+            'commission_amount'  => $commission > 0 ? $commission : $click->commission_amount,
             'external_order_id'  => $externalOrderId,
+            // Normalizamos la red por si el clic se registró con un valor
+            // antiguo capitalizado ('Amazon' → 'amazon').
+            'network'            => $handler->slug(),
             'webhook_payload'    => $request->all(),
         ]);
 
         Log::info('Affiliate webhook: conversión registrada', [
             'click_id'   => $click->id,
-            'network'    => $network,
+            'network'    => $handler->slug(),
             'commission' => $commission,
         ]);
 
@@ -80,7 +86,8 @@ class AffiliateWebhookController extends Controller
 
     private function resolveHandler(string $network): ?AffiliateNetwork
     {
-        $class = $this->networks[strtolower($network)] ?? null;
-        return $class ? app($class) : null;
+        // bySlug() sólo acepta redes con integración dedicada: las redes
+        // genéricas no tienen webhook propio.
+        return $this->networks->bySlug($network);
     }
 }

@@ -17,9 +17,9 @@
         <label class="block text-xs font-semibold text-gray-600 mb-1">Red</label>
         <select name="network" class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
             <option value="">Todas</option>
-            <option value="Amazon"     @selected($network === 'Amazon')>Amazon</option>
-            <option value="AliExpress" @selected($network === 'AliExpress')>AliExpress</option>
-            <option value="Shein"      @selected($network === 'Shein')>Shein</option>
+            @foreach($networkOptions ?? [] as $slug => $label)
+                <option value="{{ $slug }}" @selected($network === $slug)>{{ $label }}</option>
+            @endforeach
         </select>
     </div>
     <div>
@@ -67,7 +67,7 @@
                         <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                             {{ $c->created_at?->format('d/m/Y H:i') }}
                         </td>
-                        <td class="px-4 py-3 text-xs">{{ $c->network ?? '—' }}</td>
+                        <td class="px-4 py-3 text-xs">{{ ucfirst($c->network ?? ($c->product?->external_store ?? '—')) }}</td>
                         <td class="px-4 py-3 text-xs truncate max-w-xs">{{ $c->product?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-xs font-mono truncate max-w-[100px]">{{ $c->sub_id ?? '—' }}</td>
                         <td class="px-4 py-3 text-xs font-mono">{{ $c->external_order_id ?? '—' }}</td>

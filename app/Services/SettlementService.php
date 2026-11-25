@@ -31,14 +31,17 @@ class SettlementService
     /**
      * Crea los asientos de un pedido dentro de la transacción del checkout.
      *
-     * @param array{chargeable: float, commission_total: float, payable_supplier: float, wallet_paid: bool} $values
+     * @param array{chargeable?: float, commission_total?: float, payable_supplier?: float, wallet_paid?: bool, paid_upfront?: bool} $values
      */
     public function createForOrder(Order $order, array $values): void
     {
         $chargeable = (float) ($values['chargeable'] ?? 0);
         $commission = (float) ($values['commission_total'] ?? 0);
         $payable = (float) ($values['payable_supplier'] ?? 0);
-        $walletPaid = (bool) ($values['wallet_paid'] ?? false);
+        // Billetera O pago con tarjeta confirmado: el cobro al cliente ya
+        // está liquidado en el momento del pedido (paid_upfront es el
+        // nombre nuevo; wallet_paid se mantiene por compatibilidad).
+        $paidUpfront = (bool) ($values['paid_upfront'] ?? $values['wallet_paid'] ?? false);
 
         $rows = [];
 
@@ -48,8 +51,8 @@ class SettlementService
                 'user_id' => $order->user_id,
                 'type' => Settlement::TYPE_RECEIVABLE_CUSTOMER,
                 'amount' => $chargeable,
-                'status' => $walletPaid ? Settlement::STATUS_SETTLED : Settlement::STATUS_PENDING,
-                'settled_at' => $walletPaid ? now() : null,
+                'status' => $paidUpfront ? Settlement::STATUS_SETTLED : Settlement::STATUS_PENDING,
+                'settled_at' => $paidUpfront ? now() : null,
                 'description' => 'Cobro al cliente (productos propios + envío)',
             ];
         }
@@ -101,6 +104,23 @@ class SettlementService
     public function settleCommission(Order $order, ?string $externalRef = null): void
     {
         Settlement::ofType(Settlement::TYPE_COMMISSION_OWED)
+            ->where('order_id', $order->id)
+            ->where('status', Settlement::STATUS_PENDING)
+            ->update([
+                'status' => Settlement::STATUS_SETTLED,
+                'settled_at' => now(),
+                'external_ref' => $externalRef,
+            ]);
+    }
+
+    /**
+     * Marca como liquidado el cobro al cliente cuando el gateway confirma
+     * el pago de forma asíncrona (webhook payment_intent.succeeded, 3D
+     * Secure diferido, etc.). Idempotente.
+     */
+    public function settleReceivable(Order $order, ?string $externalRef = null): void
+    {
+        Settlement::ofType(Settlement::TYPE_RECEIVABLE_CUSTOMER)
             ->where('order_id', $order->id)
             ->where('status', Settlement::STATUS_PENDING)
             ->update([

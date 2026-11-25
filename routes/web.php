@@ -5,9 +5,11 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SettlementController as AdminSettlementController;
 use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
+use App\Http\Controllers\Admin\AdController as AdminAdController;
 use App\Http\Controllers\Account\DashboardController as AccountDashboard;
 use App\Http\Controllers\Account\OrderController as AccountOrderController;
 use App\Http\Controllers\Admin\WalletController as AdminWalletController;
+use App\Http\Controllers\AdTrackingController;
 use App\Http\Controllers\AffiliateRedirectController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -19,11 +21,34 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Account\WalletController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AffiliateWebhookController;
 
+/*
+|--------------------------------------------------------------------------
+| Webhooks (sin CSRF; cada proveedor firma con su propio mecanismo)
+|--------------------------------------------------------------------------
+*/
 Route::post('/webhooks/affiliate/{network}', [AffiliateWebhookController::class, 'handle'])
     ->name('affiliate.webhook');
+
+// Pasarela de pago: confirma pagos asíncronos (3D Secure, reintentos).
+// La firma HMAC (Stripe-Signature) se verifica dentro del controlador.
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])
+    ->name('stripe.webhook');
+
+/*
+|--------------------------------------------------------------------------
+| Anuncios: rutas públicas de tracking (píxel + click)
+|--------------------------------------------------------------------------
+*/
+Route::get('/ads/click/{ad}', [AdTrackingController::class, 'click'])
+    ->middleware('throttle:web')
+    ->name('ads.click');
+Route::get('/ads/impression/{ad}', [AdTrackingController::class, 'impression'])
+    ->middleware('throttle:storefront')
+    ->name('ads.impression');
 
 /*
 |--------------------------------------------------------------------------
@@ -161,6 +186,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/afiliacion/conciliacion', [AdminAffiliateController::class, 'reconciliation'])->name('affiliate.reconciliation');
     Route::patch('/afiliacion/{click}/marcar-pagado', [AdminAffiliateController::class, 'markAsPaid'])->name('affiliate.markPaid');
     Route::patch('/afiliacion/{click}/rechazar', [AdminAffiliateController::class, 'reject'])->name('affiliate.reject');
+
+    // Admin · Anuncios (sistema de ads: posiciones, métricas, activación)
+    Route::get('/anuncios', [AdminAdController::class, 'index'])->name('ads.index');
+    Route::get('/anuncios/crear', [AdminAdController::class, 'create'])->name('ads.create');
+    Route::post('/anuncios', [AdminAdController::class, 'store'])->name('ads.store');
+    Route::get('/anuncios/{ad}/editar', [AdminAdController::class, 'edit'])->name('ads.edit');
+    Route::put('/anuncios/{ad}', [AdminAdController::class, 'update'])->name('ads.update');
+    Route::patch('/anuncios/{ad}/toggle', [AdminAdController::class, 'toggle'])->name('ads.toggle');
+    Route::delete('/anuncios/{ad}', [AdminAdController::class, 'destroy'])->name('ads.destroy');
 
     Route::get('/billeteras', [AdminWalletController::class, 'index'])->name('wallets.index');
     Route::get('/billeteras/{wallet}', [AdminWalletController::class, 'show'])->name('wallets.show');

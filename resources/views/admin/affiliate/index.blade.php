@@ -16,6 +16,15 @@
         <input type="date" name="to" value="{{ $to }}"
             class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
     </div>
+    <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Red</label>
+        <select name="network" class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <option value="">Todas</option>
+            @foreach($networkOptions ?? [] as $slug => $label)
+                <option value="{{ $slug }}" @selected($network === $slug)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
     <button type="submit" class="bg-ink text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-800">
         Filtrar
     </button>
@@ -57,8 +66,10 @@
         <h2 class="font-bold mb-4">Top productos</h2>
         @forelse($topProducts as $row)
             <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div class="flex items-center gap-3 min-w-0">
-                    <img src="{{ $row->product?->image }}" alt="" class="w-8 h-10 object-cover rounded">
+                    <div class="flex items-center gap-3 min-w-0">
+                    {{-- FIX: se usaba $row->product?->image (ruta cruda) y
+                         rompía la miniatura; image_url resuelve CDN/storage. --}}
+                    <img src="{{ $row->product?->image_url ?? asset('img/placeholder.svg') }}" alt="" class="w-8 h-10 object-cover rounded">
                     <span class="truncate text-sm">{{ $row->product?->name ?? '—' }}</span>
                 </div>
                 <span class="text-sm font-bold ml-2">{{ $row->total }}</span>
@@ -68,12 +79,13 @@
         @endforelse
     </div>
 
-    {{-- Top tiendas --}}
+    {{-- Top tiendas (slug normalizado: la red del clic, con respaldo en el
+         external_store del producto) --}}
     <div class="bg-white rounded-2xl shadow-sm p-5">
         <h2 class="font-bold mb-4">Top tiendas</h2>
         @forelse($topStores as $row)
             <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <span class="text-sm">{{ $row->external_store }}</span>
+                <span class="text-sm">{{ ucfirst($row->store ?? '—') }}</span>
                 <span class="text-sm font-bold">{{ $row->total }}</span>
             </div>
         @empty

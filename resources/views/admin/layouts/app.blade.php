@@ -43,6 +43,10 @@
             class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.affiliate.reconciliation') ? 'bg-white/10 text-white' : '' }}">
                 Conciliación
             </a>
+            <a href="{{ route('admin.ads.index') }}"
+               class="block px-3 py-2 rounded-lg hover:bg-white/10 hover:text-white {{ request()->routeIs('admin.ads.*') ? 'bg-white/10 text-white' : '' }}">
+                Anuncios
+            </a>
         </nav>
 
         <p class="text-[10px] uppercase tracking-widest text-gray-500 mb-2">Cuenta</p>

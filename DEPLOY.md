@@ -89,6 +89,10 @@ sin el cual las imágenes subidas desde el admin no se ven.
 php artisan migrate --force
 ```
 
+La iteración de 2026-11-25 añade dos migraciones:
+`fix_affiliate_clicks_columns` (fix del registro de clics de afiliación)
+y `create_ads_table` (sistema de anuncios). No requieren datos previos.
+
 Para crear el usuario admin:
 
 ```bash
@@ -99,6 +103,25 @@ php artisan db:seed --class=AdminUserSeeder
 
 **No ejecutes `db:seed --class=ProductSeeder` en producción** salvo que
 quieras datos demo. Esos seeders son para desarrollo.
+
+**Anuncios (ads):** el sistema viene desactivado por seguridad vía
+`ADS_ENABLED=false`. Para activarlo:
+
+```bash
+# .env
+ADS_ENABLED=true
+php artisan db:seed --class=AdSeeder   # banners de ejemplo en posiciones
+php artisan optimize:clear             # refresca caché de config/vistas
+# Gestionarlos después en /admin/anuncios
+```
+
+**Pasarela de pago (tarjeta):** sin `STRIPE_SECRET` el checkout usa el
+SandboxGateway (sin cargo real; tarjetas de test de Stripe: 4242… éxito,
+4000…0002 rechazada, 4000…9995 sin fondos). Con claves reales se usa la
+API REST de Stripe automáticamente. Registra también el webhook
+`https://tudominio.com/webhooks/stripe` en el panel de Stripe con el
+evento `payment_intent.succeeded` (y `payment_intent.payment_failed`) y
+copia su secreto a `STRIPE_WEBHOOK_SECRET`.
 
 ---
 

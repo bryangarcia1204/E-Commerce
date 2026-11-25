@@ -15,14 +15,19 @@ class AffiliateController extends Controller
         $from = $request->input('from', now()->subDays(30)->toDateString());
         $to   = $request->input('to',   now()->toDateString());
 
-        $baseQuery = AffiliateClick::query()->betweenDates($from, $to);
+        // FIX: filtro de red normalizado (acepta 'Amazon'/'amazon' y coincide
+        // con el slug minúsculo guardado en affiliate_clicks.network).
+        $network = $request->input('network');
+
+        $baseQuery = AffiliateClick::query()
+            ->betweenDates($from, $to)
+            ->forNetwork($network);
 
         // KPIs
         $totalClicks   = (clone $baseQuery)->count();
         $todayClicks   = AffiliateClick::whereDate('created_at', today())->count();
         $uniqueProducts= (clone $baseQuery)->distinct('product_id')->count('product_id');
         $estimatedComm = (float) (clone $baseQuery)->sum('commission_amount');
-        $conversionBase = (clone $baseQuery)->count();
 
         // Serie diaria (rellenamos días sin datos con 0)
         $daily = (clone $baseQuery)
@@ -42,25 +47,30 @@ class AffiliateController extends Controller
             ->take(10)
             ->get();
 
-        // Top tiendas
+        // Top tiendas (por red del clic, con respaldo en products.external_store)
         $topStores = (clone $baseQuery)
-            ->join('products', 'products.id', '=', 'affiliate_clicks.product_id')
-            ->select('products.external_store', DB::raw('COUNT(*) as total'))
-            ->whereNotNull('products.external_store')
-            ->groupBy('products.external_store')
+            ->selectRaw("COALESCE(affiliate_clicks.network, products.external_store) as store, COUNT(*) as total")
+            ->leftJoin('products', 'products.id', '=', 'affiliate_clicks.product_id')
+            ->where(function ($q) {
+                $q->whereNotNull('affiliate_clicks.network')->orWhereNotNull('products.external_store');
+            })
+            ->groupBy('store')
             ->orderByDesc('total')
             ->take(10)
             ->get();
 
         // Tabla paginada
         $clicks = (clone $baseQuery)
-            ->with(['product:id,name,slug', 'user:id,name,email'])
+            ->with(['product:id,name,slug,external_store', 'user:id,name,email'])
             ->latest()
             ->paginate(25)
             ->withQueryString();
 
+        // Opciones de red para el filtro de la vista.
+        $networkOptions = app(\App\Services\Affiliate\AffiliateNetworkManager::class)->options();
+
         return view('admin.affiliate.index', compact(
-            'from', 'to',
+            'from', 'to', 'network', 'networkOptions',
             'totalClicks', 'todayClicks', 'uniqueProducts', 'estimatedComm',
             'series', 'topProducts', 'topStores', 'clicks'
         ));
@@ -73,10 +83,13 @@ class AffiliateController extends Controller
         $from    = $request->input('from', now()->subDays(90)->toDateString());
         $to      = $request->input('to',   now()->toDateString());
 
+        // FIX: el filtro de red se normaliza por slug ('Amazon' → 'amazon',
+        // que es como se guarda en affiliate_clicks.network). Antes el
+        // filtro capitalizado devolvía siempre 0 resultados.
         $clicks = AffiliateClick::query()
             ->with('product:id,name,external_store')
             ->betweenDates($from, $to)
-            ->when($network, fn ($q) => $q->where('network', $network))
+            ->forNetwork($network)
             ->when($status,  fn ($q) => $q->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate(30)
@@ -84,13 +97,16 @@ class AffiliateController extends Controller
 
         $totals = AffiliateClick::query()
             ->betweenDates($from, $to)
-            ->when($network, fn ($q) => $q->where('network', $network))
+            ->forNetwork($network)
             ->selectRaw('status, COUNT(*) as cnt, SUM(commission_amount) as sum')
             ->groupBy('status')
             ->get();
 
+        // Opciones de red para el filtro: slug → nombre legible.
+        $networkOptions = app(\App\Services\Affiliate\AffiliateNetworkManager::class)->options();
+
         return view('admin.affiliate.reconciliation', compact(
-            'clicks', 'totals', 'network', 'status', 'from', 'to'
+            'clicks', 'totals', 'network', 'status', 'from', 'to', 'networkOptions'
         ));
     }
 
@@ -125,7 +141,7 @@ class AffiliateController extends Controller
 
         return response()->streamDownload(function () use ($from, $to) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['ID', 'Fecha', 'Producto', 'Tienda', 'Usuario', 'IP', 'Referer', 'Comisión']);
+            fputcsv($out, ['ID', 'Fecha', 'Producto', 'Tienda', 'Red', 'Estado', 'Usuario', 'IP', 'Referer', 'Comisión']);
 
             AffiliateClick::with(['product:id,name,external_store', 'user:id,email'])
                 ->betweenDates($from, $to)
@@ -136,6 +152,8 @@ class AffiliateController extends Controller
                             $c->created_at?->toDateTimeString(),
                             $c->product?->name,
                             $c->product?->external_store,
+                            $c->network,
+                            $c->status,
                             $c->user?->email,
                             $c->ip_address,
                             $c->referer,

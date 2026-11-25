@@ -93,22 +93,28 @@ class Product extends Model
     }
 
     /**
-     * URL de afiliado: external_url con el tag de afiliado inyectado como
-     * query string. Si no hay external_url ni tag, devuelve la URL interna
-     * del producto. Esto es lo que se usa en el botón "Comprar en {tienda}".
+     * URL de afiliado: external_url con el tag de afiliado y el sub_id del
+     * click inyectados como query string. La construcción la hace la red
+     * correspondiente vía AffiliateNetworkManager (case-insensitive: en BD
+     * el external_store se guarda en minúsculas, pero aquí entran 'Amazon',
+     * 'shein', etc.). Si no hay external_url devuelve la URL interna del
+     * producto. El sub_id lo inyecta AffiliateRedirectController en los
+     * attributes de la request ANTES de llamar aquí.
      */
     public function getAffiliateUrlAttribute(): string
     {
-        $base = $this->external_url;
-        $tag  = $this->affiliate_tag;
-        $sub  = request()->attributes->get('affiliate_sub_id', ''); // lo inyecta el controlador
+        if (! $this->external_url) {
+            return route('products.show', $this);
+        }
 
-        return match ($this->external_store) {
-            'Amazon'     => $base . '?tag=' . $tag . '&ascsubtag=' . $sub,
-            'AliExpress' => $base . '?aff_fcid=' . $tag . '&aff_platform=api-new-link-generate&sub_id=' . $sub,
-            'Shein'      => $base . '?url_from=' . $tag . '&sub_id=' . $sub,
-            default      => $base . '?affid=' . $tag . '&sub_id=' . $sub,
-        };
+        $sub = (string) request()->attributes->get('affiliate_sub_id', '');
+
+        $network = app(\App\Services\Affiliate\AffiliateNetworkManager::class)
+            ->resolve($this->external_store);
+
+        return $network
+            ? $network->buildAffiliateUrl($this->external_url, $this->affiliate_tag, $sub)
+            : $this->external_url;
     }
 
     /**

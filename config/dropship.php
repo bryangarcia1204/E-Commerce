@@ -19,6 +19,7 @@ return [
         'news'      => (int) env('CACHE_TTL_NEWS', 900),      // 15 min
         'dashboard' => (int) env('CACHE_TTL_DASHBOARD', 60),  // 1 min
         'cart'      => (int) env('CACHE_TTL_CART', 30),       // 30 s
+        'ads'       => (int) env('CACHE_TTL_ADS', 300),       // 5 min
     ],
 
     // Lista blanca de dominios de tiendas externas permitidos para el

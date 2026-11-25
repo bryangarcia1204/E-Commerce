@@ -36,13 +36,30 @@ return [
     ],
 
     'ads' => [
+        // Interruptor maestro del sistema de anuncios (tabla `ads` + slots
+        // <x-ad-slot>). Con false no se renderiza nada.
         'enabled' => env('ADS_ENABLED', false),
+        // Proveedor externo opcional (Adsterra/Monetag/...): si una posición
+        // no tiene anuncio propio en BD y hay script configurado, se usa.
+        'provider' => env('ADS_PROVIDER'),
+        'script'   => env('ADS_SCRIPT'),
     ],
 
     'affiliate' => [
         'amazon_webhook_secret'     => env('AFFILIATE_AMAZON_WEBHOOK_SECRET'),
         'aliexpress_webhook_secret' => env('AFFILIATE_ALIEXPRESS_WEBHOOK_SECRET'),
         'shein_webhook_secret'      => env('AFFILIATE_SHEIN_WEBHOOK_SECRET'),
+        'generic_webhook_secret'    => env('AFFILIATE_GENERIC_WEBHOOK_SECRET'),
+    ],
+
+    // Pasarela de pago con tarjeta. Sin STRIPE_SECRET configurado, el
+    // PaymentService cae automáticamente al gateway Sandbox (determinista,
+    // marcado como SANDBOX) para poder probar el flujo completo en local.
+    'stripe' => [
+        'key'             => env('STRIPE_KEY'),
+        'secret'          => env('STRIPE_SECRET'),
+        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
+        'currency'        => env('STRIPE_CURRENCY', 'eur'),
     ],
 
 ];

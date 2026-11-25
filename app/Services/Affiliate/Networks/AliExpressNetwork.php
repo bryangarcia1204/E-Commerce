@@ -2,36 +2,59 @@
 
 namespace App\Services\Affiliate\Networks;
 
-use App\Services\Affiliate\Contracts\AffiliateNetwork;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
-class AliExpressNetwork implements AffiliateNetwork
+class AliExpressNetwork extends AbstractAffiliateNetwork
 {
     public function name(): string
     {
         return 'AliExpress';
     }
 
+    public function slug(): string
+    {
+        return 'aliexpress';
+    }
+
     public function verify(Request $request): bool
     {
-        // AliExpress firma con MD5 sobre parámetros ordenados alfabéticamente
-        // más el secreto al final. Verifica `sign` enviado vs calculado.
+        // AliExpress Portals firma con MD5 sobre los parámetros ordenados
+        // alfabéticamente (clave+valor concatenados) con el secreto al
+        // principio, comparado con el parámetro `sign` en mayúsculas.
+        //
+        // IMPORTANTE: sin secreto configurado se rechaza el webhook
+        // (fail-closed), igual que Amazon y Shein. Antes este método
+        // devolvía `true` siempre y aceptaba payloads sin firmar.
         $secret = config('services.affiliate.aliexpress_webhook_secret');
-        if (! $secret) return true;
+
+        if (! $secret) {
+            Log::warning('AliExpress webhook secret no configurado; webhook rechazado.');
+            return false;
+        }
 
         $params = $request->all();
         $sign = $params['sign'] ?? null;
         unset($params['sign']);
 
+        if (! is_string($sign) || $sign === '') {
+            return false;
+        }
+
         ksort($params);
+
         $base = '';
         foreach ($params as $k => $v) {
+            // Los arrays no participan en la firma de AliExpress.
+            if (is_array($v)) {
+                continue;
+            }
             $base .= $k . $v;
         }
 
         $expected = strtoupper(md5($secret . $base));
 
-        return true; #is_string($sign) && hash_equals($expected, strtoupper($sign));
+        return $this->signatureEquals($expected, $sign);
     }
 
     public function extractSubId(Request $request): ?string
@@ -49,5 +72,20 @@ class AliExpressNetwork implements AffiliateNetwork
     public function extractExternalOrderId(Request $request): ?string
     {
         return $request->input('order_number') ?? $request->input('trade_id');
+    }
+
+    protected function tagParam(): string
+    {
+        return 'aff_fcid';
+    }
+
+    protected function subParam(): string
+    {
+        return 'sub_id';
+    }
+
+    protected function extraParams(): array
+    {
+        return ['aff_platform' => 'api-new-link-generate'];
     }
 }

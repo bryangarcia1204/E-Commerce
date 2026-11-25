@@ -24,9 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
-        // Excluir webhooks de CSRF
+        // Excluir webhooks de CSRF (los firma el proveedor con su propio
+        // mecanismo: HMAC compartida, no tokens de sesión).
         $middleware->preventRequestForgery(except: [
             'webhooks/affiliate/*',
+            'webhooks/stripe',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

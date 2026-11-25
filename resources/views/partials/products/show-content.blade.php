@@ -74,6 +74,26 @@
                 </form>
             </div>
 
+            {{-- CTA de afiliación: productos dropshipping con tienda externa.
+                 Pasa por /ir/{product} (AffiliateRedirectController) para
+                 registrar el click con sub_id + tag de afiliado. --}}
+            @if($product->is_dropshipping && $product->external_url)
+                <div class="border border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
+                    <p class="text-sm font-semibold text-amber-900">
+                        🛍️ Producto de tienda asociada
+                    </p>
+                    <p class="text-xs text-amber-800">
+                        {{ ucfirst($product->external_store ?? 'la tienda') }} gestiona el pago y el envío.
+                        Al pulsar te llevamos a la tienda original a través de nuestro enlace de afiliado.
+                    </p>
+                    <a href="{{ route('affiliate.redirect', $product) }}"
+                       target="_blank" rel="noopener noreferrer nofollow sponsored"
+                       class="block w-full text-center bg-black text-white rounded-xl py-3 font-semibold hover:bg-gray-800 transition">
+                        Comprar en {{ ucfirst($product->external_store ?? 'tienda') }} →
+                    </a>
+                </div>
+            @endif
+
             <div class="text-xs text-gray-500 space-y-1 border border-gray-100 rounded-xl p-3 bg-gray-50">
                 <p>✅ Stock: {{ $product->stock }} uds.</p>
                 <p>🚚 Envío en 24-48h · Gratis desde 50 €</p>
@@ -84,6 +104,9 @@
                 <h3 class="font-bold mb-2">Descripción</h3>
                 <p>{{ $product->description }}</p>
             </div>
+
+            {{-- Anuncio: bajo la descripción del producto. --}}
+            <x-ad-slot position="product-mid" />
         </div>
     </div>
 

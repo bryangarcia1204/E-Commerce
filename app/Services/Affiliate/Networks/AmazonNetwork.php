@@ -2,21 +2,26 @@
 
 namespace App\Services\Affiliate\Networks;
 
-use App\Services\Affiliate\Contracts\AffiliateNetwork;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class AmazonNetwork implements AffiliateNetwork
+class AmazonNetwork extends AbstractAffiliateNetwork
 {
     public function name(): string
     {
         return 'Amazon';
     }
 
+    public function slug(): string
+    {
+        return 'amazon';
+    }
+
     public function verify(Request $request): bool
     {
-        // Amazon envía SNS con firma. En producción, valida SNS con el certificado
-        // y verifica `TopicArn` contra el tuyo. Simplificación para dev/demo:
+        // Amazon envía SNS con firma. En producción, valida SNS con el
+        // certificado y verifica `TopicArn` contra el tuyo. Simplificación
+        // para dev/demo: token secreto compartido en cabecera.
         $secret = config('services.affiliate.amazon_webhook_secret');
 
         if (! $secret) {
@@ -45,5 +50,16 @@ class AmazonNetwork implements AffiliateNetwork
     {
         return data_get($request->all(), 'order_id')
             ?? data_get($request->all(), 'OrderId');
+    }
+
+    protected function tagParam(): string
+    {
+        return 'tag';
+    }
+
+    protected function subParam(): string
+    {
+        // Amazon Associates usa ascsubtag para el sub-tracking del click.
+        return 'ascsubtag';
     }
 }

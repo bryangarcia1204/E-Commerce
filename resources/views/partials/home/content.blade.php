@@ -120,6 +120,10 @@
     </div>
 </section>
 
+{{-- Anuncio: posición intermedia de la home (tabla ads, gestionable en
+     /admin/anuncios; ADS_ENABLED la activa). --}}
+<x-ad-slot position="home-mid" />
+
 {{-- FLASH SALE --}}
 @if($flash->isNotEmpty())
 <section class="bg-gradient-to-r from-rose-500 to-brand text-white">
@@ -152,6 +156,8 @@
 </section>
 @endif
 
+<x-ad-slot position="home-flash" />
+
 {{-- DESTACADOS --}}
 <section class="max-w-7xl mx-auto px-4 py-14">
     <div class="flex items-end justify-between mb-6">
@@ -182,7 +188,7 @@
 
 {{-- TIENDAS ASOCIADAS (dropshipping / afiliación) --}}
 @if($dropshipping->isNotEmpty())
-<section class="bg-gradient-to-r from-amber-50 to-rose-50 border-y border-amber-100">
+<section id="tiendas" class="bg-gradient-to-r from-amber-50 to-rose-50 border-y border-amber-100">
     <div class="max-w-7xl mx-auto px-4 py-12">
         <div class="flex items-end justify-between mb-6">
             <div>

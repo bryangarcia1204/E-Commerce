@@ -7,6 +7,9 @@
         <p class="text-sm text-gray-500 mt-1">{{ $products->total() }} productos</p>
     </div>
 
+    {{-- Anuncio: cabecera del catálogo (ads gestionables en /admin/anuncios). --}}
+    <x-ad-slot position="catalog-top" />
+
     {{-- Filtros --}}
     <form method="GET" class="flex flex-wrap items-center gap-3 mb-6">
         @if(request('q'))

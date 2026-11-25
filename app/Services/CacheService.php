@@ -35,6 +35,7 @@ class CacheService
         'news'      => 900,   // 15 min — feed de novedades
         'dashboard' => 60,    // 1 min  — agregados admin
         'cart'      => 30,    // 30 s   — conteo del carrito por usuario
+        'ads'       => 300,   // 5 min  — anuncio activo por posición
     ];
 
     public function __construct(private ?string $store = null) {}
